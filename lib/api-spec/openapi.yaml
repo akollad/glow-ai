@@ -3,13 +3,26 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Glow AI API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User profile operations
+  - name: scans
+    description: Skin scan operations
+  - name: payments
+    description: Mobile Money payment operations
+  - name: youcam
+    description: YouCam AI proxy operations
+  - name: tiktok
+    description: TikTok clip generation
+  - name: stats
+    description: Dashboard stats and aggregates
+
 paths:
   /healthz:
     get:
@@ -24,7 +37,308 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user profile
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: updateMe
+      tags: [users]
+      summary: Update current user profile
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
+  /scans:
+    get:
+      operationId: listScans
+      tags: [scans]
+      summary: List user's skin scan history
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: List of scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scan"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createScan
+      tags: [scans]
+      summary: Submit a new skin scan
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanInput"
+      responses:
+        "201":
+          description: Scan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "402":
+          description: Payment required
+        "401":
+          description: Unauthorized
+
+  /scans/{scanId}:
+    get:
+      operationId: getScan
+      tags: [scans]
+      summary: Get a specific scan with full results
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: scanId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Scan detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "404":
+          description: Not found
+        "401":
+          description: Unauthorized
+
+  /scans/latest:
+    get:
+      operationId: getLatestScan
+      tags: [scans]
+      summary: Get user's most recent scan
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Latest scan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "404":
+          description: No scans yet
+        "401":
+          description: Unauthorized
+
+  /youcam/skin-analysis:
+    post:
+      operationId: runSkinAnalysis
+      tags: [youcam]
+      summary: Run YouCam Skin AI analysis on a selfie
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkinAnalysisInput"
+      responses:
+        "200":
+          description: Skin analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkinAnalysisResult"
+        "402":
+          description: Payment required
+        "401":
+          description: Unauthorized
+
+  /youcam/apparel-vto:
+    post:
+      operationId: runApparelVto
+      tags: [youcam]
+      summary: Run YouCam Apparel Virtual Try-On
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApparelVtoInput"
+      responses:
+        "200":
+          description: Virtual try-on result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApparelVtoResult"
+        "401":
+          description: Unauthorized
+
+  /payments/initiate:
+    post:
+      operationId: initiatePayment
+      tags: [payments]
+      summary: Initiate a Mobile Money payment
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Payment initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResult"
+        "401":
+          description: Unauthorized
+
+  /payments/{referenceHub}/status:
+    get:
+      operationId: getPaymentStatus
+      tags: [payments]
+      summary: Check payment status
+      security:
+        - clerkAuth: []
+      parameters:
+        - name: referenceHub
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatus"
+        "404":
+          description: Not found
+        "401":
+          description: Unauthorized
+
+  /payments/callback:
+    post:
+      operationId: paymentCallback
+      tags: [payments]
+      summary: Receive payment webhook from pay.akollad.com
+      responses:
+        "200":
+          description: Callback received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
+
+  /subscriptions/me:
+    get:
+      operationId: getMySubscription
+      tags: [payments]
+      summary: Get current user's subscription status
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: Subscription info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "401":
+          description: Unauthorized
+
+  /tiktok/generate:
+    post:
+      operationId: generateTiktokClip
+      tags: [tiktok]
+      summary: Generate TikTok clip data from a scan
+      security:
+        - clerkAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TiktokClipInput"
+      responses:
+        "200":
+          description: TikTok clip data ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TiktokClipResult"
+        "401":
+          description: Unauthorized
+
+  /stats/me:
+    get:
+      operationId: getMyStats
+      tags: [stats]
+      summary: Get current user's progress stats and summary
+      security:
+        - clerkAuth: []
+      responses:
+        "200":
+          description: User stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+        "401":
+          description: Unauthorized
+
 components:
+  securitySchemes:
+    clerkAuth:
+      type: http
+      scheme: bearer
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +348,285 @@ components:
       required:
         - status
 
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkUserId:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        preferredTelecom:
+          type: ["string", "null"]
+        subscriptionStatus:
+          type: string
+          enum: [free, active, expired]
+        scanCredits:
+          type: integer
+        totalScans:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - clerkUserId
+        - subscriptionStatus
+        - scanCredits
+        - totalScans
+        - createdAt
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        phone:
+          type: string
+        preferredTelecom:
+          type: string
+          enum: [AM, OM, MP]
+
+    SkinMetrics:
+      type: object
+      properties:
+        overallScore:
+          type: integer
+        acneScore:
+          type: integer
+        hydrationScore:
+          type: integer
+        pigmentationScore:
+          type: integer
+        poresScore:
+          type: integer
+        wrinklesScore:
+          type: integer
+        darkcirclesScore:
+          type: integer
+        radianceScore:
+          type: integer
+        undertone:
+          type: ["string", "null"]
+        skinType:
+          type: ["string", "null"]
+      required:
+        - overallScore
+        - acneScore
+        - hydrationScore
+        - pigmentationScore
+        - poresScore
+        - wrinklesScore
+        - darkcirclesScore
+        - radianceScore
+
+    ColorRecommendation:
+      type: object
+      properties:
+        recommendedColors:
+          type: array
+          items:
+            type: string
+        avoidColors:
+          type: array
+          items:
+            type: string
+        necklineAdvice:
+          type: ["string", "null"]
+        styleAdvice:
+          type: ["string", "null"]
+      required:
+        - recommendedColors
+        - avoidColors
+
+    Scan:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        selfieUrl:
+          type: ["string", "null"]
+        skinMetrics:
+          $ref: "#/components/schemas/SkinMetrics"
+        colorRecommendation:
+          $ref: "#/components/schemas/ColorRecommendation"
+        aiAdvice:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, processing, complete, failed]
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - status
+        - createdAt
+
+    ScanInput:
+      type: object
+      properties:
+        selfieBase64:
+          type: string
+      required:
+        - selfieBase64
+
+    SkinAnalysisInput:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+      required:
+        - imageBase64
+
+    SkinAnalysisResult:
+      type: object
+      properties:
+        metrics:
+          $ref: "#/components/schemas/SkinMetrics"
+        rawData:
+          type: object
+          additionalProperties: true
+      required:
+        - metrics
+
+    ApparelVtoInput:
+      type: object
+      properties:
+        userImageBase64:
+          type: string
+        apparelImageUrl:
+          type: string
+      required:
+        - userImageBase64
+        - apparelImageUrl
+
+    ApparelVtoResult:
+      type: object
+      properties:
+        resultImageUrl:
+          type: string
+        resultImageBase64:
+          type: ["string", "null"]
+      required:
+        - resultImageUrl
+
+    PaymentInput:
+      type: object
+      properties:
+        amount:
+          type: integer
+        phone:
+          type: string
+        currency:
+          type: string
+          enum: [USD, CDF]
+        telecom:
+          type: string
+          enum: [AM, OM, MP]
+        planType:
+          type: string
+          enum: [per_scan, monthly]
+      required:
+        - amount
+        - phone
+        - currency
+        - planType
+
+    PaymentResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        referenceHub:
+          type: string
+        status:
+          type: string
+      required:
+        - success
+        - referenceHub
+        - status
+
+    PaymentStatus:
+      type: object
+      properties:
+        referenceHub:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, SUCCESS, FAILED, CANCELLED, EXPIRED]
+      required:
+        - referenceHub
+        - status
+
+    Subscription:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [free, active, expired]
+        plan:
+          type: ["string", "null"]
+          enum: [monthly, null]
+        expiresAt:
+          type: ["string", "null"]
+        scanCredits:
+          type: integer
+      required:
+        - status
+        - scanCredits
+
+    TiktokClipInput:
+      type: object
+      properties:
+        scanId:
+          type: integer
+      required:
+        - scanId
+
+    TiktokClipResult:
+      type: object
+      properties:
+        shareUrl:
+          type: string
+        previewImageUrl:
+          type: ["string", "null"]
+        caption:
+          type: string
+        hashtags:
+          type: array
+          items:
+            type: string
+      required:
+        - shareUrl
+        - caption
+        - hashtags
+
+    UserStats:
+      type: object
+      properties:
+        totalScans:
+          type: integer
+        latestScore:
+          type: ["integer", "null"]
+        scoreChange:
+          type: ["integer", "null"]
+        hydrationTrend:
+          type: ["integer", "null"]
+        acneTrend:
+          type: ["integer", "null"]
+        streakWeeks:
+          type: integer
+        subscriptionStatus:
+          type: string
+        scanCredits:
+          type: integer
+      required:
+        - totalScans
+        - streakWeeks
+        - subscriptionStatus
+        - scanCredits

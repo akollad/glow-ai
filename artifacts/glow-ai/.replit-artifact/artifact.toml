@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Glow AI"
+version = "1.0.0"
+id = "artifacts/glow-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19101
+
+[services.development]
+run = "pnpm --filter @workspace/glow-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/glow-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/glow-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19101"
+BASE_PATH = "/"

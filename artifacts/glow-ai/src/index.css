@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+@layer theme, base, clerk, components, utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@plugin "@tailwindcss/typography";
+@import '@clerk/themes/shadcn.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 35 30% 98%;
+  --foreground: 20 28% 18%;
+  
+  --border: 30 20% 90%;
+  --input: 30 20% 90%;
+  --ring: 24 74% 54%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 20 28% 18%;
+  --card-border: 30 20% 90%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 28% 18%;
+  --popover-border: 30 20% 90%;
+
+  /* Terracotta / Amber */
+  --primary: 24 74% 54%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Warm Gold */
+  --secondary: 36 80% 65%;
+  --secondary-foreground: 20 28% 18%;
+
+  --muted: 30 20% 90%;
+  --muted-foreground: 20 15% 45%;
+
+  --accent: 30 30% 94%;
+  --accent-foreground: 20 28% 18%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --app-font-sans: 'Outfit', sans-serif;
+  --app-font-serif: 'Fraunces', serif;
+  --app-font-mono: ui-monospace, monospace;
+  
+  --radius: 1rem;
+}
+
+.dark {
+  --background: 20 28% 12%;
+  --foreground: 35 30% 98%;
+  
+  --border: 20 20% 20%;
+  --input: 20 20% 20%;
+  --ring: 24 74% 54%;
+
+  --card: 20 25% 15%;
+  --card-foreground: 35 30% 98%;
+  --card-border: 20 20% 20%;
+
+  --popover: 20 25% 15%;
+  --popover-foreground: 35 30% 98%;
+  --popover-border: 20 20% 20%;
+
+  --primary: 24 74% 54%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 36 80% 50%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 20 20% 20%;
+  --muted-foreground: 30 20% 70%;
+
+  --accent: 20 25% 20%;
+  --accent-foreground: 35 30% 98%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+/* Hide scrollbar for clean UI */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Utilities for noise texture if needed */
+.noise-bg {
+  position: relative;
+}
+.noise-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.6;
+}
