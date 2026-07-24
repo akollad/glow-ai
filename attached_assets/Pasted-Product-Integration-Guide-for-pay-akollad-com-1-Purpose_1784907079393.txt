@@ -1,0 +1,203 @@
+Product Integration Guide for pay.akollad.com
+1. Purpose
+pay.akollad.com is a private payment hub for internal Akollad products.
+
+It is not a public landing page. The root path / intentionally exposes no public content.
+
+Products should integrate with the HTTP API only.
+
+2. What a product needs
+Each product should know:
+
+its own product name, for example agotels, nokimenu, or joventy
+an active product key
+the customer phone number
+the amount to charge
+the telecom code, if the product wants to force one
+an optional callback URL on the product side
+3. Authentication
+The initiation endpoint expects the product key in the HTTP header:
+
+x-akollad-key: pak_...
+If PAY_GATEWAY_ALLOW_UNAUTHENTICATED=true is enabled on the hub, the key check is relaxed. In production, this should stay false.
+
+4. Core endpoints
+4.1 Create a payment
+POST /api/v1/payments/initiate
+
+Required JSON fields:
+
+product
+amount
+phone
+Optional JSON fields:
+
+currency - USD or CDF
+telecom - AM, OM, or MP
+description
+metadata
+callbackUrl
+successUrl
+failureUrl
+Example request:
+
+curl -X POST "https://pay.akollad.com/api/v1/payments/initiate" \
+  -H "Content-Type: application/json" \
+  -H "x-akollad-key: pak_your_active_key" \
+  -d '{
+    "product": "agotels",
+    "amount": 100,
+    "currency": "CDF",
+    "phone": "2433469738820",
+    "telecom": "AM",
+    "description": "Hotel booking payment",
+    "metadata": {
+      "bookingId": "BK-1024",
+      "source": "web"
+    },
+    "callbackUrl": "https://agotels.com/api/payments/callback",
+    "successUrl": "https://agotels.com/payment/success",
+    "failureUrl": "https://agotels.com/payment/failed"
+  }'
+Typical success response:
+
+{
+  "success": true,
+  "providerMode": "live",
+  "referenceHub": "PAY-20260719123000-AB12CD34",
+  "referenceSerdipay": "SP-2024-....",
+  "status": "PENDING",
+  "transaction": {
+    "referenceHub": "PAY-20260719123000-AB12CD34",
+    "status": "PENDING"
+  }
+}
+Important behavior:
+
+the response status is usually 201
+the initial transaction status is usually PENDING
+the hub validates amount, phone, currency, and telecom
+unsafe callback URLs are rejected
+4.2 Check payment status
+GET /api/v1/payments/{referenceHub}/status
+
+Example:
+
+curl "https://pay.akollad.com/api/v1/payments/PAY-20260719123000-AB12CD34/status"
+Success response:
+
+{
+  "success": true,
+  "transaction": {
+    "referenceHub": "PAY-20260719123000-AB12CD34",
+    "status": "SUCCESS"
+  }
+}
+If the reference does not exist, the API returns 404.
+
+4.3 Receive product notification
+When a transaction reaches a final state, the hub can notify the product through the callbackUrl provided at initiation time.
+
+The payload contains:
+
+referenceHub
+referenceSerdipay
+product
+amount
+currency
+phone
+status
+metadata
+updatedAt
+If PAY_NOTIFY_SECRET is configured on pay.akollad.com, the callback also includes:
+
+x-pay-akollad-signature: <hmac-sha256>
+Products should verify this signature before trusting the callback body.
+
+5. Recommended integration flow
+The product requests an active key from the private dashboard.
+The product calls POST /api/v1/payments/initiate.
+The product stores referenceHub.
+The product listens to the asynchronous callback.
+If needed, the product polls GET /api/v1/payments/{referenceHub}/status.
+The product updates its local order state only after a final status.
+6. Example Node.js integration
+const response = await fetch("https://pay.akollad.com/api/v1/payments/initiate", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-akollad-key": process.env.AKOLLAD_PRODUCT_KEY,
+  },
+  body: JSON.stringify({
+    product: "agotels",
+    amount: 100,
+    currency: "CDF",
+    phone: "2433469738820",
+    telecom: "AM",
+    description: "Room booking",
+    metadata: {
+      orderId: "ORD-1001",
+    },
+    callbackUrl: "https://agotels.com/api/payments/callback",
+  }),
+});
+
+const result = await response.json();
+
+if (!response.ok) {
+  throw new Error(result.message ?? "Payment initiation failed");
+}
+
+console.log(result.referenceHub);
+7. Example callback handler
+import crypto from "node:crypto";
+
+function verifySignature(rawBody, signature, secret) {
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  return expected === signature;
+}
+
+export async function POST(request) {
+  const rawBody = await request.text();
+  const signature = request.headers.get("x-pay-akollad-signature");
+
+  if (process.env.PAY_NOTIFY_SECRET) {
+    const ok = verifySignature(rawBody, signature, process.env.PAY_NOTIFY_SECRET);
+    if (!ok) {
+      return Response.json({ success: false, message: "Invalid signature" }, { status: 401 });
+    }
+  }
+
+  const payload = JSON.parse(rawBody);
+  // Update local order status here.
+
+  return Response.json({ success: true });
+}
+8. Product examples
+Agotels
+product name: agotels
+use case: hotel booking or service checkout
+recommended metadata: bookingId, roomId, customerName
+NokiMenu
+product name: nokimenu
+use case: menu ordering or restaurant payments
+recommended metadata: orderId, tableNumber, branch
+Joventy
+product name: joventy
+use case: any event, ticket, or commerce flow
+recommended metadata: ticketId, eventId, customerEmail
+9. Common errors
+401 INVALID_API_KEY: the product key is missing or invalid
+400 MISSING_PRODUCT: the product field is missing
+400 MISSING_AMOUNT: the amount field is missing
+400 MISSING_PHONE: the phone field is missing
+400 INVALID_CALLBACK_URL: the callback URL is not allowed
+429 RATE_LIMITED: too many requests from the same client
+500: server-side error while creating or forwarding the payment
+10. Best practices
+Never expose the product key in browser code.
+Keep payment initiation on the server.
+Use a trusted callback endpoint on the product side.
+Store only referenceHub in the product database.
+Treat SUCCESS, FAILED, CANCELLED, and EXPIRED as final statuses.
+Reconcile the local order state from the hub, not from the UI alone.
