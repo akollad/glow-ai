@@ -19,4 +19,6 @@ export interface SkinMetrics {
   undertone?: string | null;
   /** @nullable */
   skinType?: string | null;
+  /** @nullable */
+  skinAge?: number | null;
 }

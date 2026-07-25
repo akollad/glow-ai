@@ -1,7 +1,7 @@
 import { useParams, Link } from "wouter"
 import { useGetScan } from "@workspace/api-client-react"
 import { motion } from "framer-motion"
-import { ArrowLeft, Sparkles, Droplets, Flame, Search, AlertCircle, Shirt, RefreshCcw, Camera } from "lucide-react"
+import { ArrowLeft, Sparkles, Droplets, Flame, Search, AlertCircle, Shirt, RefreshCcw, Camera, Wind, Eye, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,7 +29,6 @@ const YOUCAM_ERROR_MESSAGES: Record<string, string> = {
   error_unsupport_ratio:      "Format d'image non supporté. Utilisez un format portrait.",
   unknown_internal_error:     "Erreur interne YouCam. Veuillez réessayer.",
   timeout:                    "L'analyse a pris trop de temps. Réessayez avec une connexion plus stable.",
-  // Skin analysis errors from file specs
   error_below_min_image_size: "Résolution trop faible. Utilisez une photo d'au moins 480 px de large.",
   error_exceed_max_image_size: "Résolution trop élevée. L'image a été recadrée automatiquement.",
   error_src_face_too_small:   "Visage trop petit dans l'image. Rapprochez-vous de l'appareil.",
@@ -51,7 +50,6 @@ export default function ScanDetail() {
     query: {
       enabled: !!scanId,
       queryKey: ["getScan", Number(scanId)],
-      // Poll every 2 s while the scan is still being processed
       refetchInterval: (query) => {
         const status = (query.state.data as { status?: string } | undefined)?.status
         return status === "processing" ? 2000 : false
@@ -133,6 +131,11 @@ export default function ScanDetail() {
   // ── Complete ──
   const metrics = scan.skinMetrics
   const colors = scan.colorRecommendation
+  const masks = (scan.maskUrls ?? {}) as Record<string, string>
+
+  // Helper: resolve mask URL for a metric — checks hd_ prefix first, then bare name
+  const mask = (base: string): string | undefined =>
+    masks[`hd_${base}`] ?? masks[base] ?? masks[`hd_${base}_v2`] ?? masks[`${base}_v2`]
 
   return (
     <div className="min-h-[100dvh] w-full flex justify-center bg-background noise-bg pb-24">
@@ -169,10 +172,16 @@ export default function ScanDetail() {
                 <p className="text-xs text-muted-foreground mb-1">Sous-ton</p>
                 <p className="font-semibold text-sm capitalize">{metrics?.undertone || "Neutre"}</p>
               </div>
-              <div className="flex-1 text-center">
+              <div className="flex-1 text-center border-r border-border">
                 <p className="text-xs text-muted-foreground mb-1">Type de peau</p>
                 <p className="font-semibold text-sm capitalize">{metrics?.skinType || "Mixte"}</p>
               </div>
+              {metrics?.skinAge != null && (
+                <div className="flex-1 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Âge peau</p>
+                  <p className="font-semibold text-sm">{metrics.skinAge} ans</p>
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -195,7 +204,7 @@ export default function ScanDetail() {
             </motion.div>
           )}
 
-          {/* Detailed Metrics */}
+          {/* Detailed Metrics — all 8 */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -203,11 +212,14 @@ export default function ScanDetail() {
             className="space-y-4"
           >
             <h3 className="font-serif text-2xl px-2">Analyse Détaillée</h3>
-            <MetricBar label="Hydratation"   icon={<Droplets size={16}/>}     score={metrics?.hydrationScore}    color="bg-blue-500" />
-            <MetricBar label="Éclat"         icon={<Sparkles size={16}/>}     score={metrics?.radianceScore}     color="bg-yellow-500" />
-            <MetricBar label="Acné"          icon={<AlertCircle size={16}/>}  score={metrics?.acneScore}         color="bg-red-400" />
-            <MetricBar label="Pores"         icon={<Search size={16}/>}       score={metrics?.poresScore}        color="bg-primary" />
-            <MetricBar label="Pigmentation"  icon={<Flame size={16}/>}        score={metrics?.pigmentationScore} color="bg-purple-500" />
+            <MetricBar label="Hydratation"   icon={<Droplets size={16}/>}   score={metrics?.hydrationScore}    color="bg-blue-500"    maskUrl={mask("moisture")} />
+            <MetricBar label="Éclat"         icon={<Sparkles size={16}/>}   score={metrics?.radianceScore}     color="bg-yellow-500"  maskUrl={mask("radiance")} />
+            <MetricBar label="Acné"          icon={<AlertCircle size={16}/>} score={metrics?.acneScore}        color="bg-red-400"     maskUrl={mask("acne")} />
+            <MetricBar label="Pores"         icon={<Search size={16}/>}     score={metrics?.poresScore}        color="bg-primary"     maskUrl={mask("pore")} />
+            <MetricBar label="Pigmentation"  icon={<Flame size={16}/>}      score={metrics?.pigmentationScore} color="bg-purple-500"  maskUrl={mask("age_spot")} />
+            <MetricBar label="Rides"         icon={<Wind size={16}/>}       score={metrics?.wrinklesScore}     color="bg-orange-400"  maskUrl={mask("wrinkle")} />
+            <MetricBar label="Cernes"        icon={<Eye size={16}/>}        score={metrics?.darkcirclesScore}  color="bg-indigo-400"  maskUrl={mask("dark_circle")} />
+            <MetricBar label="Texture"       icon={<Layers size={16}/>}     score={metrics?.oilinessScore ?? undefined} color="bg-teal-500" maskUrl={mask("texture")} />
           </motion.div>
 
           {/* Color & Style Palette */}
@@ -258,20 +270,43 @@ export default function ScanDetail() {
   )
 }
 
-function MetricBar({ label, icon, score = 0, color }: { label: string; icon: React.ReactNode; score?: number; color: string }) {
+// ─── MetricBar ────────────────────────────────────────────────────────────────
+
+function MetricBar({
+  label,
+  icon,
+  score = 0,
+  color,
+  maskUrl,
+}: {
+  label: string
+  icon: React.ReactNode
+  score?: number
+  color: string
+  maskUrl?: string
+}) {
   return (
-    <Card className="border-border/50 shadow-none">
+    <Card className="border-border/50 shadow-none overflow-hidden">
       <CardContent className="p-4 flex items-center gap-4">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${color}`}>
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 ${color}`}>
           {icon}
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center mb-2">
             <span className="font-medium text-sm">{label}</span>
             <span className="font-bold text-sm">{score}/100</span>
           </div>
           <Progress value={score} className="h-1.5" indicatorColor={color} />
         </div>
+        {maskUrl && (
+          <img
+            src={maskUrl}
+            alt={`Masque ${label}`}
+            className="w-14 h-14 rounded-xl object-cover shrink-0 border border-border/40"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+          />
+        )}
       </CardContent>
     </Card>
   )

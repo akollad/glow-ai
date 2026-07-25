@@ -20,6 +20,8 @@ export * from './paymentStatus';
 export * from './paymentStatusStatus';
 export * from './scan';
 export * from './scanInput';
+export * from './scanMaskUrls';
+export * from './scanRawYoucamData';
 export * from './scanStatus';
 export * from './skinAnalysisInput';
 export * from './skinAnalysisResult';

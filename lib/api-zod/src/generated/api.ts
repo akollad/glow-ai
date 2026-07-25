@@ -72,7 +72,8 @@ export const ListScansResponseItem = zod.object({
   "darkcirclesScore": zod.number(),
   "radianceScore": zod.number(),
   "undertone": zod.string().nullish(),
-  "skinType": zod.string().nullish()
+  "skinType": zod.string().nullish(),
+  "skinAge": zod.number().nullish()
 }).optional(),
   "colorRecommendation": zod.object({
   "recommendedColors": zod.array(zod.string()),
@@ -82,7 +83,9 @@ export const ListScansResponseItem = zod.object({
 }).optional(),
   "aiAdvice": zod.string().nullish(),
   "status": zod.enum(['pending', 'processing', 'complete', 'failed']),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "maskUrls": zod.record(zod.string(), zod.string()).optional().describe('Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore.'),
+  "rawYoucamData": zod.record(zod.string(), zod.unknown()).optional()
 })
 export const ListScansResponse = zod.array(ListScansResponseItem)
 
@@ -108,7 +111,8 @@ export const CreateScanResponse = zod.object({
   "darkcirclesScore": zod.number(),
   "radianceScore": zod.number(),
   "undertone": zod.string().nullish(),
-  "skinType": zod.string().nullish()
+  "skinType": zod.string().nullish(),
+  "skinAge": zod.number().nullish()
 }).optional(),
   "colorRecommendation": zod.object({
   "recommendedColors": zod.array(zod.string()),
@@ -118,7 +122,9 @@ export const CreateScanResponse = zod.object({
 }).optional(),
   "aiAdvice": zod.string().nullish(),
   "status": zod.enum(['pending', 'processing', 'complete', 'failed']),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "maskUrls": zod.record(zod.string(), zod.string()).optional().describe('Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore.'),
+  "rawYoucamData": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 
@@ -143,7 +149,8 @@ export const GetScanResponse = zod.object({
   "darkcirclesScore": zod.number(),
   "radianceScore": zod.number(),
   "undertone": zod.string().nullish(),
-  "skinType": zod.string().nullish()
+  "skinType": zod.string().nullish(),
+  "skinAge": zod.number().nullish()
 }).optional(),
   "colorRecommendation": zod.object({
   "recommendedColors": zod.array(zod.string()),
@@ -153,7 +160,9 @@ export const GetScanResponse = zod.object({
 }).optional(),
   "aiAdvice": zod.string().nullish(),
   "status": zod.enum(['pending', 'processing', 'complete', 'failed']),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "maskUrls": zod.record(zod.string(), zod.string()).optional().describe('Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore.'),
+  "rawYoucamData": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 
@@ -174,7 +183,8 @@ export const GetLatestScanResponse = zod.object({
   "darkcirclesScore": zod.number(),
   "radianceScore": zod.number(),
   "undertone": zod.string().nullish(),
-  "skinType": zod.string().nullish()
+  "skinType": zod.string().nullish(),
+  "skinAge": zod.number().nullish()
 }).optional(),
   "colorRecommendation": zod.object({
   "recommendedColors": zod.array(zod.string()),
@@ -184,7 +194,9 @@ export const GetLatestScanResponse = zod.object({
 }).optional(),
   "aiAdvice": zod.string().nullish(),
   "status": zod.enum(['pending', 'processing', 'complete', 'failed']),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "maskUrls": zod.record(zod.string(), zod.string()).optional().describe('Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore.'),
+  "rawYoucamData": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 
@@ -206,7 +218,8 @@ export const RunSkinAnalysisResponse = zod.object({
   "darkcirclesScore": zod.number(),
   "radianceScore": zod.number(),
   "undertone": zod.string().nullish(),
-  "skinType": zod.string().nullish()
+  "skinType": zod.string().nullish(),
+  "skinAge": zod.number().nullish()
 }),
   "rawData": zod.record(zod.string(), zod.unknown()).optional()
 })

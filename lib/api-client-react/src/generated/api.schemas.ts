@@ -61,6 +61,8 @@ export interface SkinMetrics {
   undertone?: string | null;
   /** @nullable */
   skinType?: string | null;
+  /** @nullable */
+  skinAge?: number | null;
 }
 
 export interface ColorRecommendation {
@@ -82,6 +84,13 @@ export const ScanStatus = {
   failed: 'failed',
 } as const;
 
+/**
+ * Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore.
+ */
+export type ScanMaskUrls = {[key: string]: string};
+
+export type ScanRawYoucamData = { [key: string]: unknown };
+
 export interface Scan {
   id: number;
   userId: number;
@@ -93,6 +102,9 @@ export interface Scan {
   aiAdvice?: string | null;
   status: ScanStatus;
   createdAt: string;
+  /** Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore. */
+  maskUrls?: ScanMaskUrls;
+  rawYoucamData?: ScanRawYoucamData;
 }
 
 export interface ScanInput {

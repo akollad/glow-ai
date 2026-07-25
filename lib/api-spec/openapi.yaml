@@ -412,6 +412,8 @@ components:
           type: ["string", "null"]
         skinType:
           type: ["string", "null"]
+        skinAge:
+          type: ["integer", "null"]
       required:
         - overallScore
         - acneScore
@@ -461,6 +463,14 @@ components:
           enum: [pending, processing, complete, failed]
         createdAt:
           type: string
+        maskUrls:
+          type: object
+          description: "Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore."
+          additionalProperties:
+            type: string
+        rawYoucamData:
+          type: object
+          additionalProperties: true
       required:
         - id
         - userId

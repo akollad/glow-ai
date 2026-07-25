@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ColorRecommendation } from './colorRecommendation';
+import type { ScanMaskUrls } from './scanMaskUrls';
+import type { ScanRawYoucamData } from './scanRawYoucamData';
 import type { ScanStatus } from './scanStatus';
 import type { SkinMetrics } from './skinMetrics';
 
@@ -20,4 +22,7 @@ export interface Scan {
   aiAdvice?: string | null;
   status: ScanStatus;
   createdAt: string;
+  /** Per-metric mask overlay URLs from YouCam (pre-signed, expire after 2h). Keys are YouCam action names e.g. hd_acne, hd_pore. */
+  maskUrls?: ScanMaskUrls;
+  rawYoucamData?: ScanRawYoucamData;
 }

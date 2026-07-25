@@ -8,6 +8,27 @@ import { analyzeSkin, deriveColorRecommendation, generateAiAdvice, YouCamTaskErr
 const router = Router();
 
 function formatScan(scan: typeof scansTable.$inferSelect) {
+  // Extract per-metric mask URLs from rawYoucamData.output.
+  // For multi-region types (hd_pore, hd_wrinkle) prefer region="whole".
+  // URLs are pre-signed S3 links that expire ~2h after the scan.
+  const maskUrls: Record<string, string> = {};
+  const rawOutput = (scan.rawYoucamData as { output?: Array<{
+    type: string;
+    region?: string;
+    mask_urls?: string[];
+  }> } | null)?.output ?? [];
+
+  for (const item of rawOutput) {
+    const url = item.mask_urls?.[0];
+    if (!url) continue;
+    // Prefer whole-face region; skip if a whole-region entry already stored
+    if (item.region === "whole" || !item.region) {
+      maskUrls[item.type] = url;
+    } else if (!maskUrls[item.type]) {
+      maskUrls[item.type] = url;
+    }
+  }
+
   return {
     id: scan.id,
     userId: scan.userId,
@@ -17,6 +38,8 @@ function formatScan(scan: typeof scansTable.$inferSelect) {
     aiAdvice: scan.aiAdvice,
     status: scan.status,
     createdAt: scan.createdAt.toISOString(),
+    maskUrls,
+    rawYoucamData: scan.rawYoucamData,
   };
 }
 
