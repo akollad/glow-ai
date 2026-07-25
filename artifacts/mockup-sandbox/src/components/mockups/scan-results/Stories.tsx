@@ -133,8 +133,15 @@ export function Stories() {
     const strokeDashoffset = circumference * (1 - data.overallScore / 100);
 
     return (
-      <div className="absolute inset-0 flex flex-col items-center p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-900/40 via-zinc-950 to-black pt-32 pb-12">
-        <div className="relative w-56 h-56 flex items-center justify-center mb-8 shrink-0">
+      <div className="absolute inset-0 flex flex-col items-center p-6 pt-32 pb-12">
+        <img
+          src="/__mockup/images/selfie.jpg"
+          className="absolute inset-0 w-full h-full object-cover object-top"
+          alt="selfie"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/90" />
+        
+        <div className="relative z-10 w-56 h-56 flex items-center justify-center mb-8 shrink-0">
           <svg className="absolute inset-0 w-full h-full transform -rotate-90">
             <circle
               cx="112"
@@ -168,9 +175,9 @@ export function Stories() {
           </div>
         </div>
 
-        <h2 className="text-4xl font-['Playfair_Display'] text-white mb-8">Bien</h2>
+        <h2 className="relative z-10 text-4xl font-['Playfair_Display'] text-white mb-8">Bien</h2>
 
-        <div className="flex gap-3 mb-auto">
+        <div className="relative z-10 flex gap-3 mb-auto">
           <div className="px-5 py-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-sm text-zinc-200">
             {data.skinType}
           </div>
@@ -182,7 +189,7 @@ export function Stories() {
           </div>
         </div>
 
-        <div className="w-full mt-12">
+        <div className="relative z-10 w-full mt-12">
           <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 backdrop-blur-md shadow-[0_0_20px_rgba(245,158,11,0.05)] relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
             <p className="text-amber-100/90 text-base italic leading-relaxed text-center font-['Playfair_Display']">
@@ -205,26 +212,41 @@ export function Stories() {
         </h2>
       </div>
 
-      <div className="space-y-8 relative z-10">
-        {zone.metrics.map((m, i) => (
-          <div key={m.label} className="flex flex-col gap-3">
-            <div className="flex justify-between items-end">
-              <span className="text-zinc-200 text-base tracking-wide font-medium">{m.label}</span>
-              <span className={`text-2xl font-bold font-['Playfair_Display'] ${getScoreTextColor(m.score)}`}>
-                {m.score}
-              </span>
+      <div className="relative z-10">
+        {zone.metrics.map((m, i) => {
+          const scoreColor = m.score >= 80 ? '#22c55e' : m.score >= 60 ? '#f59e0b' : '#ef4444';
+          return (
+            <div key={m.label} className="relative rounded-2xl overflow-hidden h-36 mb-4">
+              {/* selfie */}
+              <img src="/__mockup/images/selfie.jpg"
+                   className="absolute inset-0 w-full h-full object-cover object-top" />
+              {/* overlay couleur = "masque" */}
+              <div className="absolute inset-0"
+                   style={{ backgroundColor: scoreColor + '55', mixBlendMode: 'multiply' }} />
+              {/* gradient pour texte */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+              {/* contenu */}
+              <div className="absolute inset-0 flex items-center justify-between p-4">
+                <div className="flex-1 pr-4">
+                  <p className="font-['Playfair_Display'] text-lg text-white">{m.label}</p>
+                  <p className="text-[11px] text-white/65 mt-1 leading-snug">{m.tip}</p>
+                </div>
+                {/* mini ring */}
+                <div className="relative w-14 h-14 shrink-0">
+                  <svg className="absolute inset-0 -rotate-90" width="56" height="56" viewBox="0 0 56 56">
+                    <circle cx="28" cy="28" r="22" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.1)" strokeWidth="5"/>
+                    <circle cx="28" cy="28" r="22" fill="none" stroke={scoreColor} strokeWidth="5"
+                            strokeLinecap="round"
+                            strokeDasharray={`${(m.score/100)*138.2} 138.2`}/>
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-white font-bold text-sm leading-none">{m.score}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${m.score}%` }}
-                transition={{ delay: 0.1 + i * 0.1, duration: 1, ease: "easeOut" }}
-                className={`h-full rounded-full ${getScoreBgColor(m.score)}`}
-              />
-            </div>
-            <p className="text-[13px] text-zinc-400 leading-relaxed pr-6">{m.tip}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

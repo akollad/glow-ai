@@ -77,43 +77,34 @@ export function Constellation() {
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto pb-24 hide-scrollbar relative z-10">
         
-        {/* Header & Hero */}
-        <div className="pt-12 pb-6 px-6 flex flex-col items-center justify-center relative">
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="relative flex items-center justify-center w-48 h-48 rounded-full mb-2"
-            style={{
-              background: `radial-gradient(circle, ${mainColor.bg} 0%, transparent 60%)`,
-            }}
-          >
-            <motion.div
-              animate={{ 
-                boxShadow: [
-                  `0 0 0px ${mainColor.hex}20`,
-                  `0 0 40px ${mainColor.hex}40`,
-                  `0 0 0px ${mainColor.hex}20`
-                ]
-              }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="w-32 h-32 rounded-full border border-amber-500/20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md z-10"
-              style={{ borderColor: mainColor.border }}
-            >
-              <span className="text-5xl font-['Playfair_Display'] font-bold text-amber-50 tracking-tighter">{mockData.overallScore}</span>
-              <span className="text-[9px] text-amber-200/60 uppercase tracking-widest mt-1">Glow Score</span>
-            </motion.div>
-            
-            {/* Decorative orbit rings */}
-            <div className="absolute inset-0 rounded-full border border-zinc-800/40 scale-90" />
-            <div className="absolute inset-0 rounded-full border border-zinc-800/20 scale-110 border-dashed" />
-          </motion.div>
-          
-          <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-[250px]">
-            <span className="px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[11px] font-medium text-amber-100/70">{mockData.skinType}</span>
-            <span className="px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[11px] font-medium text-amber-100/70 uppercase">{mockData.undertone}</span>
-            <span className="px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[11px] font-medium text-amber-100/70">{mockData.skinAge} ans</span>
+        {/* Hero: photo + score */}
+        <div className="relative h-56 overflow-hidden rounded-b-[3rem]">
+          {/* selfie en fond */}
+          <img src="/__mockup/images/selfie.jpg"
+               className="absolute inset-0 w-full h-full object-cover object-top" />
+          {/* gradient noir en bas */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-zinc-950" />
+          {/* Score ring centré en bas, chevauchant le bord */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3">
+            <div className="relative w-28 h-28">
+              <svg className="absolute inset-0 -rotate-90 drop-shadow-lg" width="112" height="112" viewBox="0 0 112 112">
+                <circle cx="56" cy="56" r="44" fill="rgba(24,24,27,0.85)" stroke="rgba(255,255,255,0.05)" strokeWidth="7"/>
+                <circle cx="56" cy="56" r="44" fill="none" stroke={mainColor.hex} strokeWidth="7"
+                        strokeLinecap="round"
+                        strokeDasharray="276.46" strokeDashoffset={`${276.46*(1-mockData.overallScore/100)}`}/>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-white font-bold text-3xl font-['Playfair_Display'] leading-none">{mockData.overallScore}</span>
+                <span className="text-zinc-400 text-[9px] uppercase tracking-widest mt-0.5">Glow Score</span>
+              </div>
+            </div>
           </div>
+        </div>
+        {/* Chips sous le hero (avec espacement pour le ring qui dépasse) */}
+        <div className="flex gap-2 justify-center pt-14 pb-4 px-4">
+          <span className="px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[11px] font-medium text-amber-100/70">{mockData.skinType}</span>
+          <span className="px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[11px] font-medium text-amber-100/70 uppercase">{mockData.undertone}</span>
+          <span className="px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-[11px] font-medium text-amber-100/70">{mockData.skinAge} ans</span>
         </div>
 
         {/* Constellation Grid */}
@@ -205,43 +196,48 @@ export function Constellation() {
               onClick={() => setSelectedMetric(null)}
               className="absolute inset-0 bg-black/70 backdrop-blur-md z-40"
             />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 250 }}
-              className="absolute bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800/50 rounded-t-3xl p-6 z-50 flex flex-col items-center text-center shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
-              style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}
+            <motion.div 
+              className="absolute inset-x-0 bottom-0 z-50 rounded-t-3xl overflow-hidden bg-zinc-900 border-t border-zinc-700 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              style={{ paddingBottom: 'max(0px, env(safe-area-inset-bottom))' }}
             >
-              <div className="w-12 h-1 bg-zinc-800 rounded-full mb-8" />
+              {/* masque photo */}
+              <div className="relative h-48 overflow-hidden">
+                <img src="/__mockup/images/selfie.jpg"
+                     className="absolute inset-0 w-full h-full object-cover object-top" />
+                <div className="absolute inset-0"
+                     style={{ backgroundColor: getScoreColor(selectedMetric.score).hex + '55',
+                              mixBlendMode: 'multiply' }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
+                
+                {/* score ring flottant en bas centre */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+                  <div className="relative w-16 h-16">
+                    <svg className="absolute inset-0 -rotate-90 drop-shadow-md" width="64" height="64" viewBox="0 0 64 64">
+                      <circle cx="32" cy="32" r="26" fill="rgba(24,24,27,0.9)" stroke="rgba(255,255,255,0.05)" strokeWidth="4"/>
+                      <circle cx="32" cy="32" r="26" fill="none" stroke={getScoreColor(selectedMetric.score).hex} strokeWidth="4"
+                              strokeLinecap="round"
+                              strokeDasharray="163.36" strokeDashoffset={`${163.36*(1-selectedMetric.score/100)}`}/>
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">{selectedMetric.score}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
-              <button 
-                onClick={() => setSelectedMetric(null)}
-                className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors bg-zinc-900 rounded-full p-2"
-              >
+              {/* texte */}
+              <div className="px-6 pt-10 pb-8 text-center">
+                <h3 className="text-xl font-['Playfair_Display'] text-white mb-2">{selectedMetric.label}</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">{selectedMetric.tip}</p>
+              </div>
+              
+              {/* bouton fermer */}
+              <button onClick={() => setSelectedMetric(null)}
+                      className="absolute top-4 right-4 z-10 text-white/70 bg-black/40 backdrop-blur-md rounded-full p-2 hover:bg-black/60 hover:text-white transition-colors shadow-lg">
                 <X size={18} />
               </button>
-
-              <h3 className="text-2xl font-['Playfair_Display'] font-medium text-amber-50 mb-6">
-                {selectedMetric.label}
-              </h3>
-
-              <div 
-                className="w-20 h-20 rounded-full flex items-center justify-center mb-6 relative"
-                style={{
-                  backgroundColor: getScoreColor(selectedMetric.score).bg,
-                  borderColor: getScoreColor(selectedMetric.score).border,
-                  borderWidth: '1px',
-                  boxShadow: getScoreColor(selectedMetric.score).shadow,
-                }}
-              >
-                <div className="absolute inset-0 rounded-full border border-white/10 scale-[0.85]" />
-                <span className="text-3xl font-bold text-white tracking-tight">{selectedMetric.score}</span>
-              </div>
-
-              <p className="text-zinc-300 text-sm leading-relaxed max-w-[280px] font-light">
-                {selectedMetric.tip}
-              </p>
             </motion.div>
           </>
         )}

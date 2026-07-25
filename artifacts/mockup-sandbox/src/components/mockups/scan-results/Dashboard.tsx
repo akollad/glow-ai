@@ -140,7 +140,7 @@ export function Dashboard() {
           
           <div className="flex items-center gap-5 mb-4 relative z-10">
             <CircularProgress score={MOCK_DATA.overallScore} size={80} strokeWidth={6} />
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-['Playfair_Display'] font-semibold mb-2">Glow Score</h2>
               <div className="flex flex-wrap gap-2">
                 <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
@@ -150,6 +150,10 @@ export function Dashboard() {
                   {MOCK_DATA.skinAge} ans
                 </span>
               </div>
+            </div>
+            <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-amber-500/50 shrink-0 shadow-lg">
+              <img src="/__mockup/images/selfie.jpg"
+                   className="w-full h-full object-cover object-top" alt="selfie" />
             </div>
           </div>
           
@@ -213,53 +217,36 @@ export function Dashboard() {
                     key={metric.label}
                     layout
                     onClick={() => setExpandedMetric(isExpanded ? null : metric.label)}
-                    className="bg-zinc-900 rounded-2xl p-4 border border-zinc-800/60 flex flex-col relative overflow-hidden cursor-pointer"
+                    className="relative rounded-2xl overflow-hidden h-44 cursor-pointer"
                   >
-                    <div className="flex flex-col items-center flex-grow">
-                      <div className="mb-3 relative">
-                        <CircularProgress score={metric.score} size={56} strokeWidth={4} />
+                    {/* selfie en fond */}
+                    <img src="/__mockup/images/selfie.jpg"
+                         className="absolute inset-0 w-full h-full object-cover object-top" />
+                    {/* overlay couleur (masque) */}
+                    <div className="absolute inset-0"
+                         style={{ backgroundColor: getScoreColor(metric.score) + '44', mixBlendMode: 'multiply' }} />
+                    {/* gradient bas pour lisibilité */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                    {/* score ring en haut à droite */}
+                    <div className="absolute top-3 right-3">
+                      <div className="relative w-12 h-12">
+                        <svg className="absolute inset-0 -rotate-90" width="48" height="48" viewBox="0 0 48 48">
+                          <circle cx="24" cy="24" r="18" fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.1)" strokeWidth="4"/>
+                          <circle cx="24" cy="24" r="18" fill="none" stroke={getScoreColor(metric.score)} strokeWidth="4"
+                                  strokeLinecap="round"
+                                  strokeDasharray={`${(metric.score/100)*113.1} 113.1`}/>
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">{metric.score}</span>
+                        </div>
                       </div>
-                      
-                      <AnimatePresence mode="wait">
-                        {!isExpanded ? (
-                          <motion.div 
-                            key="label"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="text-center"
-                          >
-                            <h3 className="font-semibold text-zinc-100 text-[15px] leading-tight">
-                              {metric.label}
-                            </h3>
-                            <p className="text-xs text-zinc-500 mt-1 flex items-center justify-center gap-1">
-                              Détails <ChevronRight size={12} />
-                            </p>
-                          </motion.div>
-                        ) : (
-                          <motion.div 
-                            key="tip"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="text-center h-full flex items-center justify-center"
-                          >
-                            <p className="text-xs text-zinc-300 font-medium leading-relaxed">
-                              {metric.tip}
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                     </div>
-
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${metric.score}%` }}
-                        transition={{ duration: 1, delay: 0.2 }}
-                        className="h-full"
-                        style={{ backgroundColor: getScoreColor(metric.score) }}
-                      />
+                    {/* label en bas */}
+                    <div className="absolute bottom-0 inset-x-0 p-3">
+                      <p className="text-white font-medium text-sm leading-tight">{metric.label}</p>
+                      {isExpanded && (
+                        <p className="text-white/70 text-[11px] mt-1 leading-snug">{metric.tip}</p>
+                      )}
                     </div>
                   </motion.div>
                 );
