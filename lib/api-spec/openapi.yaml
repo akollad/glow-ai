@@ -408,6 +408,20 @@ components:
           type: integer
         radianceScore:
           type: integer
+        oilinessScore:
+          type: integer
+        firmnessScore:
+          type: integer
+        rednessScore:
+          type: integer
+        eyeBagScore:
+          type: integer
+        tearTroughScore:
+          type: integer
+        droopyLowerEyelidScore:
+          type: integer
+        droopyUpperEyelidScore:
+          type: integer
         undertone:
           type: ["string", "null"]
         skinType:

@@ -73,6 +73,14 @@ export interface SkinMetrics {
   wrinklesScore: number;
   darkcirclesScore: number;
   radianceScore: number;
+  // Extended — all 16 YouCam actions
+  oilinessScore: number;
+  firmnessScore: number;
+  rednessScore: number;
+  eyeBagScore: number;
+  tearTroughScore: number;
+  droopyLowerEyelidScore: number;
+  droopyUpperEyelidScore: number;
   undertone: string | null;
   skinType: string | null;
   skinAge: number | null;
@@ -180,7 +188,7 @@ async function createTask(fileId: string, actions: string[]): Promise<string> {
     body: JSON.stringify({
       src_file_id: fileId,
       dst_actions: actions,
-      miniserver_args: { enable_mask_overlay: false },
+      miniserver_args: { enable_mask_overlay: true },
       format: "json",
       pf_camera_kit: false,
     }),
@@ -327,6 +335,14 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
 
   const skinAge = skinAgeItem?.score != null ? Math.round(skinAgeItem.score) : null;
 
+  // Extended metrics — all 16 actions (rednessScore already declared above for undertone)
+  const oilinessScore = score("oiliness", 70);
+  const firmnessScore = score("firmness", 75);
+  const eyeBagScore = score("eye_bag", 75);
+  const tearTroughScore = score("tear_trough", 75);
+  const droopyLowerEyelidScore = score("droopy_lower_eyelid", 75);
+  const droopyUpperEyelidScore = score("droopy_upper_eyelid", 75);
+
   return {
     overallScore,
     acneScore: score("acne"),
@@ -336,6 +352,13 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
     wrinklesScore: score("wrinkle", 80),
     darkcirclesScore,
     radianceScore: score("radiance"),
+    oilinessScore,
+    firmnessScore,
+    rednessScore,
+    eyeBagScore,
+    tearTroughScore,
+    droopyLowerEyelidScore,
+    droopyUpperEyelidScore,
     undertone,
     skinType,
     skinAge,
@@ -512,6 +535,13 @@ function simulatedResponse(
     wrinklesScore: 75 + (seed % 10),
     darkcirclesScore: 50 + (seed % 20),
     radianceScore: 55 + (seed % 20),
+    oilinessScore: 60 + (seed % 20),
+    firmnessScore: 65 + (seed % 15),
+    rednessScore: 70 + (seed % 15),
+    eyeBagScore: 65 + (seed % 20),
+    tearTroughScore: 68 + (seed % 15),
+    droopyLowerEyelidScore: 72 + (seed % 10),
+    droopyUpperEyelidScore: 74 + (seed % 10),
     undertone: (["warm", "cool", "neutral", "golden"] as const)[seed % 4] ?? "neutral",
     skinType: (["Dry", "Oily", "Combination", "Normal"] as const)[seed % 4] ?? "Normal",
     skinAge: 20 + seed,

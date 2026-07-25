@@ -19,6 +19,13 @@ export const scansTable = pgTable("scans", {
     wrinklesScore: number;
     darkcirclesScore: number;
     radianceScore: number;
+    oilinessScore?: number;
+    firmnessScore?: number;
+    rednessScore?: number;
+    eyeBagScore?: number;
+    tearTroughScore?: number;
+    droopyLowerEyelidScore?: number;
+    droopyUpperEyelidScore?: number;
     undertone: string | null;
     skinType: string | null;
     skinAge: number | null;

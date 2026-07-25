@@ -15,6 +15,13 @@ export interface SkinMetrics {
   wrinklesScore: number;
   darkcirclesScore: number;
   radianceScore: number;
+  oilinessScore?: number;
+  firmnessScore?: number;
+  rednessScore?: number;
+  eyeBagScore?: number;
+  tearTroughScore?: number;
+  droopyLowerEyelidScore?: number;
+  droopyUpperEyelidScore?: number;
   /** @nullable */
   undertone?: string | null;
   /** @nullable */
