@@ -6,12 +6,15 @@
  * Flow:
  *  1. POST /s2s/v2.0/file/skin-analysis  → presigned URL + file_id
  *  2. PUT presigned URL (binary image)
- *  3. POST /s2s/v2.1/task/skin-analysis   → task_id  (v2.1 — HD actions)
+ *  3. POST /s2s/v2.1/task/skin-analysis   → task_id
  *  4. Poll GET /s2s/v2.1/task/skin-analysis/{task_id} until success/error
  *  5. Parse output array → SkinMetrics
  *
- * All dst_actions use the HD prefix for higher-quality analysis.
- * DO NOT mix HD and SD actions — use one tier consistently.
+ * Tier selection is automatic:
+ *   - HD actions are tried first (higher quality, requires larger image).
+ *   - If YouCam returns error_below_min_image_size, the same uploaded file
+ *     is retried with SD actions (no hd_ prefix, lower resolution requirement).
+ *   - DO NOT mix HD and SD actions within a single request.
  */
 
 import { logger } from "./logger";
@@ -19,8 +22,8 @@ import { logger } from "./logger";
 const YOUCAM_API_KEY = process.env.YOUCAM_API_KEY;
 const YOUCAM_BASE = "https://yce-api-01.makeupar.com";
 
-// HD dst_actions — all HD tier, no mixing with SD
-const DST_ACTIONS = [
+// HD actions — tried first; requires a sufficiently large input image
+const HD_ACTIONS = [
   "hd_acne",
   "hd_droopy_lower_eyelid",
   "hd_eye_bag",
@@ -37,6 +40,26 @@ const DST_ACTIONS = [
   "hd_firmness",
   "hd_droopy_upper_eyelid",
   "hd_dark_circle",
+];
+
+// SD actions — fallback for images too small for HD
+const SD_ACTIONS = [
+  "acne",
+  "droopy_lower_eyelid",
+  "eye_bag",
+  "moisture",
+  "pore",
+  "redness",
+  "texture",
+  "skin_type",
+  "tear_trough",
+  "wrinkle",
+  "age_spot",
+  "radiance",
+  "oiliness",
+  "firmness",
+  "droopy_upper_eyelid",
+  "dark_circle_v2",
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -147,7 +170,7 @@ async function uploadImage(buffer: Buffer, mimeType: string): Promise<string> {
 
 // ─── Step 3: create AI task ───────────────────────────────────────────────────
 
-async function createTask(fileId: string): Promise<string> {
+async function createTask(fileId: string, actions: string[]): Promise<string> {
   const res = await fetch(`${YOUCAM_BASE}/s2s/v2.1/task/skin-analysis`, {
     method: "POST",
     headers: {
@@ -156,7 +179,7 @@ async function createTask(fileId: string): Promise<string> {
     },
     body: JSON.stringify({
       src_file_id: fileId,
-      dst_actions: DST_ACTIONS,
+      dst_actions: actions,
       miniserver_args: { enable_mask_overlay: false },
       format: "json",
       pf_camera_kit: false,
@@ -248,7 +271,7 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
 
   // For multi-region types (hd_pore, hd_wrinkle, hd_skin_type) YouCam returns
   // one entry per region. Build two maps:
-  //   wholeByType  — the entry with region="whole" (or the first if none)
+  //   wholeByType  — the entry with region="whole" (or the first entry if no region)
   //   firstByType  — the first entry seen for each type (fallback)
   const wholeByType = new Map<string, YouCamOutputItem>();
   const firstByType = new Map<string, YouCamOutputItem>();
@@ -260,34 +283,45 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
 
   const byType = (type: string) => wholeByType.get(type) ?? firstByType.get(type);
 
-  const score = (type: string, fallback = 70): number =>
-    byType(type)?.ui_score ?? fallback;
+  // Tier-agnostic lookup: accepts the base name and resolves hd_<name> first,
+  // then falls back to the bare name (SD tier uses no prefix).
+  const resolve = (base: string) => byType(`hd_${base}`) ?? byType(base);
 
-  // hd_skin_type: YouCam returns the classification directly as a string field.
-  // The "whole" region entry is the full-face classification.
-  const skinTypeItem = byType("hd_skin_type");
+  const score = (base: string, fallback = 70): number =>
+    resolve(base)?.ui_score ?? fallback;
+
+  // skin_type: YouCam returns the classification as a string field, not a score.
+  // HD: type="hd_skin_type" with skin_type="Oily" etc.
+  // SD: type="skin_type" with skin_type="Oily" etc.
+  const skinTypeItem = resolve("skin_type");
   const skinType: string | null = skinTypeItem?.skin_type ?? null;
 
-  // Undertone: derive from redness + age_spot scores
-  const rednessScore = score("hd_redness", 70);
-  const ageSpot = score("hd_age_spot", 70);
+  // Undertone: derived from redness + age_spot scores (works for both tiers)
+  const rednessScore = score("redness", 70);
+  const ageSpot = score("age_spot", 70);
   let undertone: string | null = "neutral";
   if (rednessScore < 60 && ageSpot > 70) undertone = "warm";
   else if (rednessScore < 55) undertone = "cool";
   else if (ageSpot < 55) undertone = "golden";
 
-  // "all" and "skin_age" are flat items inside the output array with a "score" field.
+  // "all" and "skin_age" are flat items in the output array with a "score" field.
   const allItem = firstByType.get("all");
   const skinAgeItem = firstByType.get("skin_age");
+
+  // dark_circle: HD uses "hd_dark_circle", SD uses "dark_circle_v2"
+  const darkcirclesScore =
+    byType("hd_dark_circle")?.ui_score ??
+    byType("dark_circle_v2")?.ui_score ??
+    75;
 
   const overallScore = allItem?.score
     ? Math.round(allItem.score)
     : Math.round(
-        (score("hd_acne") +
-          score("hd_moisture") +
-          score("hd_radiance") +
-          score("hd_pore") +
-          score("hd_texture")) /
+        (score("acne") +
+          score("moisture") +
+          score("radiance") +
+          score("pore") +
+          score("texture")) /
           5,
       );
 
@@ -295,13 +329,13 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
 
   return {
     overallScore,
-    acneScore: score("hd_acne"),
-    hydrationScore: score("hd_moisture"),
-    pigmentationScore: score("hd_age_spot"),
-    poresScore: score("hd_pore"),
-    wrinklesScore: score("hd_wrinkle", 80),
-    darkcirclesScore: score("hd_dark_circle", 75),
-    radianceScore: score("hd_radiance"),
+    acneScore: score("acne"),
+    hydrationScore: score("moisture"),
+    pigmentationScore: score("age_spot"),
+    poresScore: score("pore"),
+    wrinklesScore: score("wrinkle", 80),
+    darkcirclesScore,
+    radianceScore: score("radiance"),
     undertone,
     skinType,
     skinAge,
@@ -325,10 +359,26 @@ export async function analyzeSkin(
     const fileId = await uploadImage(buffer, mimeType);
     logger.info({ fileId }, "YouCam [2/4] file uploaded, creating task");
 
-    const taskId = await createTask(fileId);
-    logger.info({ taskId }, "YouCam [3/4] task created, polling");
+    // Try HD first; if the image is too small, retry with SD automatically
+    let task: YouCamTaskResult;
+    try {
+      const taskId = await createTask(fileId, HD_ACTIONS);
+      logger.info({ taskId, tier: "HD" }, "YouCam [3/4] task created, polling");
+      task = await pollTask(taskId);
+    } catch (hdErr) {
+      if (
+        hdErr instanceof YouCamTaskError &&
+        hdErr.errorCode === "error_below_min_image_size"
+      ) {
+        logger.warn({ fileId }, "YouCam HD failed: image too small — retrying with SD actions");
+        const sdTaskId = await createTask(fileId, SD_ACTIONS);
+        logger.info({ taskId: sdTaskId, tier: "SD" }, "YouCam [3/4] SD task created, polling");
+        task = await pollTask(sdTaskId);
+      } else {
+        throw hdErr;
+      }
+    }
 
-    const task = await pollTask(taskId);
     logger.info({ taskStatus: task.task_status, outputCount: task.results?.output?.length ?? 0 }, "YouCam [4/4] task complete");
 
     const metrics = parseMetrics(task);
