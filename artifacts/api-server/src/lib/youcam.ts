@@ -181,7 +181,8 @@ interface YouCamTaskResult {
     all?: { score: number };
     skin_age?: number;
   };
-  error_code?: string;
+  error?: string;      // YouCam uses "error" not "error_code"
+  error_code?: string; // keep for safety
 }
 
 /** Structured error carrying the YouCam error_code for downstream handling */
@@ -213,7 +214,7 @@ async function pollTask(taskId: string, maxWaitMs = 60_000): Promise<YouCamTaskR
     if (task.task_status === "error") {
       // Log the full raw task so we can see the exact error structure from YouCam
       logger.error({ rawTask: task }, "YouCam task returned error status");
-      throw new YouCamTaskError(task.error_code ?? "unknown_internal_error");
+      throw new YouCamTaskError(task.error ?? task.error_code ?? "unknown_internal_error");
     }
 
     await sleep(interval);
