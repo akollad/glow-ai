@@ -211,6 +211,8 @@ async function pollTask(taskId: string, maxWaitMs = 60_000): Promise<YouCamTaskR
 
     if (task.task_status === "success") return task;
     if (task.task_status === "error") {
+      // Log the full raw task so we can see the exact error structure from YouCam
+      logger.error({ rawTask: task }, "YouCam task returned error status");
       throw new YouCamTaskError(task.error_code ?? "unknown_internal_error");
     }
 
@@ -289,17 +291,31 @@ export async function analyzeSkin(
 
   try {
     const { buffer, mimeType } = parseBase64Image(imageBase64);
-    const fileId = await uploadImage(buffer, mimeType);
-    const taskId = await createTask(fileId);
-    const task = await pollTask(taskId);
-    const metrics = parseMetrics(task);
+    logger.info({ mimeType, fileSizeBytes: buffer.byteLength }, "YouCam [1/4] uploading image");
 
+    const fileId = await uploadImage(buffer, mimeType);
+    logger.info({ fileId }, "YouCam [2/4] file uploaded, creating task");
+
+    const taskId = await createTask(fileId);
+    logger.info({ taskId }, "YouCam [3/4] task created, polling");
+
+    const task = await pollTask(taskId);
+    logger.info({ taskStatus: task.task_status, outputCount: task.results?.output?.length ?? 0 }, "YouCam [4/4] task complete");
+
+    const metrics = parseMetrics(task);
     return {
       metrics,
       rawData: task.results as unknown as Record<string, unknown>,
     };
   } catch (err) {
-    logger.error({ err }, "YouCam API call failed — falling back to simulation");
+    const isTaskError = err instanceof YouCamTaskError;
+    logger.error(
+      { err, errorCode: isTaskError ? (err as YouCamTaskError).errorCode : undefined },
+      "YouCam API call failed — falling back to simulation",
+    );
+    // Re-throw task errors so the scan can be marked failed with the right code
+    // instead of silently falling back to simulation
+    if (isTaskError) throw err;
     return simulatedResponse(imageBase64);
   }
 }
