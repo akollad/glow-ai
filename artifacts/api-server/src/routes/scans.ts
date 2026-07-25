@@ -3,7 +3,8 @@ import { eq, desc } from "drizzle-orm";
 import { db, scansTable, usersTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { CreateScanBody } from "@workspace/api-zod";
-import { analyzeSkin, deriveColorRecommendation, generateAiAdvice, YouCamTaskError } from "../lib/youcam";
+import { analyzeSkin, deriveColorRecommendation, YouCamTaskError } from "../lib/youcam";
+import { generateAiAdvice } from "../lib/bedrock";
 
 const router = Router();
 
@@ -119,7 +120,7 @@ router.post("/scans", requireAuth, async (req, res): Promise<void> => {
     try {
       const { metrics, rawData } = await analyzeSkin(parsed.data.selfieBase64);
       const colorRec = deriveColorRecommendation(metrics);
-      const aiAdvice = generateAiAdvice(metrics);
+      const aiAdvice = await generateAiAdvice(metrics);
 
       // Deduct credit on success only
       if (user.subscriptionStatus !== "active") {

@@ -476,50 +476,6 @@ export function deriveColorRecommendation(metrics: SkinMetrics): ColorRecommenda
   return { recommendedColors, avoidColors, necklineAdvice, styleAdvice };
 }
 
-export function generateAiAdvice(metrics: SkinMetrics): string {
-  const lines: string[] = [];
-
-  if (metrics.overallScore >= 80) {
-    lines.push(
-      `Votre peau est en excellente santé avec un score de ${metrics.overallScore}/100. Continuez votre routine!`,
-    );
-  } else if (metrics.overallScore >= 60) {
-    lines.push(
-      `Score peau : ${metrics.overallScore}/100. Votre peau se porte bien, mais il y a encore de la marge.`,
-    );
-  } else {
-    lines.push(
-      `Score peau : ${metrics.overallScore}/100. Votre peau mérite plus d'attention — voici comment l'aider.`,
-    );
-  }
-
-  if (metrics.hydrationScore < 60) {
-    lines.push(
-      "Hydratation insuffisante — cherchez un sérum à l'acide hyaluronique, pas une crème éclaircissante.",
-    );
-  }
-
-  if (metrics.pigmentationScore < 50) {
-    lines.push(
-      "Hyperpigmentation détectée. Arrêtez les produits éclaircissants — votre peau a besoin de niacinamide et de protection solaire SPF 50+.",
-    );
-  }
-
-  if (metrics.acneScore < 60) {
-    lines.push(
-      "Des imperfections sont visibles. Un nettoyant à l'acide salicylique utilisé le soir peut aider.",
-    );
-  }
-
-  if (metrics.radianceScore < 50) {
-    lines.push(
-      "Votre peau manque d'éclat. La vitamine C sérum matin + exfoliation douce une fois par semaine feront la différence.",
-    );
-  }
-
-  return lines.join(" ");
-}
-
 // ─── Simulation fallback ──────────────────────────────────────────────────────
 
 function simulatedResponse(
