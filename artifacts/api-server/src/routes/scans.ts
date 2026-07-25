@@ -81,30 +81,33 @@ router.post("/scans", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Create scan record as processing
+  // Create scan record as processing — credit is NOT deducted yet
   const [scan] = await db.insert(scansTable).values({
     userId: req.dbUserId!,
     status: "processing",
     selfieBase64: parsed.data.selfieBase64,
   }).returning();
 
-  // Deduct credit if not on active subscription
-  if (user.subscriptionStatus !== "active") {
-    await db.update(usersTable)
-      .set({ scanCredits: user.scanCredits - 1, totalScans: user.totalScans + 1, updatedAt: new Date() })
-      .where(eq(usersTable.id, req.dbUserId!));
-  } else {
-    await db.update(usersTable)
-      .set({ totalScans: user.totalScans + 1, updatedAt: new Date() })
-      .where(eq(usersTable.id, req.dbUserId!));
-  }
-
-  // Run YouCam analysis asynchronously
+  // Run YouCam analysis asynchronously.
+  // Credit is only deducted after a successful analysis so that transient
+  // errors (image too small after both HD+SD attempts, network issues, etc.)
+  // never consume a user's credit.
   (async () => {
     try {
       const { metrics, rawData } = await analyzeSkin(parsed.data.selfieBase64);
       const colorRec = deriveColorRecommendation(metrics);
       const aiAdvice = generateAiAdvice(metrics);
+
+      // Deduct credit on success only
+      if (user.subscriptionStatus !== "active") {
+        await db.update(usersTable)
+          .set({ scanCredits: user.scanCredits - 1, totalScans: user.totalScans + 1, updatedAt: new Date() })
+          .where(eq(usersTable.id, req.dbUserId!));
+      } else {
+        await db.update(usersTable)
+          .set({ totalScans: user.totalScans + 1, updatedAt: new Date() })
+          .where(eq(usersTable.id, req.dbUserId!));
+      }
 
       await db.update(scansTable).set({
         skinMetrics: metrics,
@@ -115,6 +118,7 @@ router.post("/scans", requireAuth, async (req, res): Promise<void> => {
         updatedAt: new Date(),
       }).where(eq(scansTable.id, scan.id));
     } catch (err) {
+      // Analysis failed — credit is never deducted
       const errorCode = err instanceof YouCamTaskError
         ? err.errorCode
         : "unknown_internal_error";
