@@ -184,6 +184,14 @@ interface YouCamTaskResult {
   error_code?: string;
 }
 
+/** Structured error carrying the YouCam error_code for downstream handling */
+export class YouCamTaskError extends Error {
+  constructor(public readonly errorCode: string) {
+    super(`YouCam task failed: ${errorCode}`);
+    this.name = "YouCamTaskError";
+  }
+}
+
 async function pollTask(taskId: string, maxWaitMs = 60_000): Promise<YouCamTaskResult> {
   const start = Date.now();
   let interval = 1500; // start at 1.5s, back off gently
@@ -203,14 +211,14 @@ async function pollTask(taskId: string, maxWaitMs = 60_000): Promise<YouCamTaskR
 
     if (task.task_status === "success") return task;
     if (task.task_status === "error") {
-      throw new Error(`YouCam task failed: ${task.error_code ?? "unknown_internal_error"}`);
+      throw new YouCamTaskError(task.error_code ?? "unknown_internal_error");
     }
 
     await sleep(interval);
     interval = Math.min(interval * 1.3, 4000); // gentle back-off, cap at 4s
   }
 
-  throw new Error("YouCam task timed out after 60s");
+  throw new YouCamTaskError("timeout");
 }
 
 // ─── Step 5: parse YouCam output → SkinMetrics ───────────────────────────────

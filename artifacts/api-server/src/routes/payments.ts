@@ -47,11 +47,19 @@ router.post("/payments/initiate", requireAuth, async (req, res): Promise<void> =
       }),
     });
 
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      const text = await response.text();
+      req.log.error({ status: response.status, text: text.slice(0, 200) }, "Akollad returned non-JSON response");
+      res.status(502).json({ error: "Le service de paiement est temporairement indisponible. Veuillez réessayer." });
+      return;
+    }
+
     const data = await response.json() as { success?: boolean; referenceHub?: string; status?: string; message?: string };
 
     if (!response.ok || !data.success) {
       req.log.warn({ data }, "Payment initiation failed from provider");
-      res.status(400).json({ error: data.message ?? "Payment initiation failed" });
+      res.status(400).json({ error: data.message ?? "Échec du paiement. Vérifiez votre numéro et réessayez." });
       return;
     }
 
@@ -82,11 +90,22 @@ router.get("/payments/:referenceHub/status", requireAuth, async (req, res): Prom
   const referenceHub = raw!;
 
   try {
-    const response = await fetch(`${AKOLLAD_BASE_URL}/api/v1/payments/${encodeURIComponent(referenceHub)}/status`);
+    const response = await fetch(`${AKOLLAD_BASE_URL}/api/v1/payments/${encodeURIComponent(referenceHub)}/status`, {
+      headers: { "x-akollad-key": AKOLLAD_PRODUCT_KEY ?? "" },
+    });
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      const text = await response.text();
+      req.log.error({ status: response.status, text: text.slice(0, 200) }, "Akollad status returned non-JSON");
+      res.status(502).json({ error: "Service de paiement indisponible" });
+      return;
+    }
+
     const data = await response.json() as { success?: boolean; transaction?: { referenceHub: string; status: string } };
 
     if (!response.ok || !data.success) {
-      res.status(404).json({ error: "Payment not found" });
+      res.status(404).json({ error: "Paiement introuvable" });
       return;
     }
 

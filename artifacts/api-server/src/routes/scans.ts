@@ -3,7 +3,7 @@ import { eq, desc } from "drizzle-orm";
 import { db, scansTable, usersTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { CreateScanBody } from "@workspace/api-zod";
-import { analyzeSkin, deriveColorRecommendation, generateAiAdvice } from "../lib/youcam";
+import { analyzeSkin, deriveColorRecommendation, generateAiAdvice, YouCamTaskError } from "../lib/youcam";
 
 const router = Router();
 
@@ -114,8 +114,15 @@ router.post("/scans", requireAuth, async (req, res): Promise<void> => {
         status: "complete",
         updatedAt: new Date(),
       }).where(eq(scansTable.id, scan.id));
-    } catch {
-      await db.update(scansTable).set({ status: "failed", updatedAt: new Date() }).where(eq(scansTable.id, scan.id));
+    } catch (err) {
+      const errorCode = err instanceof YouCamTaskError
+        ? err.errorCode
+        : "unknown_internal_error";
+      await db.update(scansTable).set({
+        status: "failed",
+        rawYoucamData: { error_code: errorCode },
+        updatedAt: new Date(),
+      }).where(eq(scansTable.id, scan.id));
     }
   })();
 
