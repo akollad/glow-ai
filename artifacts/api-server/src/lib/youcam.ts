@@ -52,6 +52,7 @@ export interface SkinMetrics {
   radianceScore: number;
   undertone: string | null;
   skinType: string | null;
+  skinAge: number | null;
 }
 
 export interface ColorRecommendation {
@@ -177,19 +178,25 @@ async function createTask(fileId: string): Promise<string> {
 
 interface YouCamOutputItem {
   type: string;
-  ui_score: number;
-  raw_score: number;
+  // Numeric-score items
+  ui_score?: number;
+  raw_score?: number;
+  // Aggregate items ("all", "skin_age") use "score" instead of "ui_score"
+  score?: number;
+  // Multi-region items (hd_pore, hd_wrinkle, hd_skin_type) carry a region tag
+  region?: string;
+  // hd_skin_type returns a classification string, not a numeric score
+  skin_type?: string;
   mask_urls?: string[];
-  // skin_type returns a string value, not a score
-  value?: string;
+  url?: string | null;
 }
 
 interface YouCamTaskResult {
   task_status: "running" | "success" | "error";
   results?: {
+    // All result items live in the flat "output" array —
+    // "all", "skin_age", and "resize_image" are items inside it, not separate keys.
     output: YouCamOutputItem[];
-    all?: { score: number };
-    skin_age?: number;
   };
   error?: string;      // YouCam uses "error" not "error_code"
   error_code?: string; // keep for safety
@@ -238,23 +245,30 @@ async function pollTask(taskId: string, maxWaitMs = 60_000): Promise<YouCamTaskR
 
 function parseMetrics(task: YouCamTaskResult): SkinMetrics {
   const output = task.results?.output ?? [];
-  const byType = new Map(output.map((o) => [o.type, o]));
+
+  // For multi-region types (hd_pore, hd_wrinkle, hd_skin_type) YouCam returns
+  // one entry per region. Build two maps:
+  //   wholeByType  — the entry with region="whole" (or the first if none)
+  //   firstByType  — the first entry seen for each type (fallback)
+  const wholeByType = new Map<string, YouCamOutputItem>();
+  const firstByType = new Map<string, YouCamOutputItem>();
+
+  for (const item of output) {
+    if (!firstByType.has(item.type)) firstByType.set(item.type, item);
+    if (item.region === "whole" || !item.region) wholeByType.set(item.type, item);
+  }
+
+  const byType = (type: string) => wholeByType.get(type) ?? firstByType.get(type);
 
   const score = (type: string, fallback = 70): number =>
-    byType.get(type)?.ui_score ?? fallback;
+    byType(type)?.ui_score ?? fallback;
 
-  // All keys use the hd_ prefix (HD tier)
-  const oiliness = score("hd_oiliness", 50);
-  const redness = score("hd_redness", 70);
-  let skinType = "Normal";
-  if (oiliness < 50 && redness < 60) skinType = "Dry & Redness";
-  else if (oiliness < 50) skinType = "Dry";
-  else if (oiliness >= 70 && redness < 60) skinType = "Oily";
-  else if (oiliness >= 70) skinType = "Oily & Redness";
-  else if (redness < 55) skinType = "Combination & Redness";
-  else if (oiliness >= 55) skinType = "Combination";
+  // hd_skin_type: YouCam returns the classification directly as a string field.
+  // The "whole" region entry is the full-face classification.
+  const skinTypeItem = byType("hd_skin_type");
+  const skinType: string | null = skinTypeItem?.skin_type ?? null;
 
-  // Undertone: derive from redness + age_spot
+  // Undertone: derive from redness + age_spot scores
   const rednessScore = score("hd_redness", 70);
   const ageSpot = score("hd_age_spot", 70);
   let undertone: string | null = "neutral";
@@ -262,10 +276,12 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
   else if (rednessScore < 55) undertone = "cool";
   else if (ageSpot < 55) undertone = "golden";
 
-  // Overall score = YouCam's all.score if present, otherwise average of key HD metrics
-  const allScore = task.results?.all?.score;
-  const overallScore = allScore
-    ? Math.round(allScore)
+  // "all" and "skin_age" are flat items inside the output array with a "score" field.
+  const allItem = firstByType.get("all");
+  const skinAgeItem = firstByType.get("skin_age");
+
+  const overallScore = allItem?.score
+    ? Math.round(allItem.score)
     : Math.round(
         (score("hd_acne") +
           score("hd_moisture") +
@@ -274,6 +290,8 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
           score("hd_texture")) /
           5,
       );
+
+  const skinAge = skinAgeItem?.score != null ? Math.round(skinAgeItem.score) : null;
 
   return {
     overallScore,
@@ -286,6 +304,7 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
     radianceScore: score("hd_radiance"),
     undertone,
     skinType,
+    skinAge,
   };
 }
 
@@ -445,6 +464,7 @@ function simulatedResponse(
     radianceScore: 55 + (seed % 20),
     undertone: (["warm", "cool", "neutral", "golden"] as const)[seed % 4] ?? "neutral",
     skinType: (["Dry", "Oily", "Combination", "Normal"] as const)[seed % 4] ?? "Normal",
+    skinAge: 20 + seed,
   };
   return { metrics, rawData: { simulated: true } };
 }

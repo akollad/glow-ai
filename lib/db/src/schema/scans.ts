@@ -21,6 +21,7 @@ export const scansTable = pgTable("scans", {
     radianceScore: number;
     undertone: string | null;
     skinType: string | null;
+    skinAge: number | null;
   }>(),
   colorRecommendation: jsonb("color_recommendation").$type<{
     recommendedColors: string[];
