@@ -40,6 +40,20 @@ export default function Landing() {
           </p>
         </motion.div>
 
+        {/* Hero Image */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.35 }}
+          className="w-full mb-12 rounded-3xl overflow-hidden shadow-xl"
+        >
+          <img
+            src="/hero-scan.jpg"
+            alt="Femme africaine utilisant Glow AI pour analyser sa peau"
+            className="w-full h-64 object-cover object-top"
+          />
+        </motion.div>
+
         {/* Feature Cards */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
