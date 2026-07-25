@@ -223,12 +223,30 @@ export default function ScanFlow() {
                 exit={{ opacity: 0 }}
                 className="w-full flex flex-col items-center"
               >
-                <div className="w-64 h-80 border-2 border-dashed border-white/30 rounded-[3rem] flex flex-col items-center justify-center mb-8 relative">
+                <div className="w-64 h-80 border-2 border-dashed border-white/30 rounded-[3rem] flex flex-col items-center justify-center mb-6 relative">
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-[3rem] opacity-50" />
                   <Camera size={48} className="text-white/50 mb-4" />
                   <p className="text-white/60 font-medium text-center px-8">
-                    Placez votre visage au centre de l'écran avec une bonne luminosité
+                    Placez votre visage au centre
                   </p>
+                </div>
+
+                {/* Photo tips */}
+                <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 mb-6">
+                  <p className="text-white/50 text-xs uppercase tracking-widest font-semibold mb-3">Pour un résultat précis</p>
+                  <ul className="space-y-2">
+                    {[
+                      { icon: "👁️", text: "Visage face caméra, regard direct" },
+                      { icon: "📐", text: "Votre visage doit occuper 60–80 % de l'image" },
+                      { icon: "💡", text: "Bonne luminosité, pas de flou" },
+                      { icon: "🚫", text: "Pas de lunettes, frange dégagée du front" },
+                    ].map(({ icon, text }) => (
+                      <li key={text} className="flex items-center gap-3 text-sm text-white/70">
+                        <span className="text-base shrink-0">{icon}</span>
+                        <span>{text}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
 
                 <input
