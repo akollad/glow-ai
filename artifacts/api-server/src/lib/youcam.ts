@@ -6,9 +6,12 @@
  * Flow:
  *  1. POST /s2s/v2.0/file/skin-analysis  → presigned URL + file_id
  *  2. PUT presigned URL (binary image)
- *  3. POST /s2s/v2.0/task/skin-analysis   → task_id
- *  4. Poll GET /s2s/v2.0/task/skin-analysis/{task_id} until success/error
+ *  3. POST /s2s/v2.1/task/skin-analysis   → task_id  (v2.1 — HD actions)
+ *  4. Poll GET /s2s/v2.1/task/skin-analysis/{task_id} until success/error
  *  5. Parse output array → SkinMetrics
+ *
+ * All dst_actions use the HD prefix for higher-quality analysis.
+ * DO NOT mix HD and SD actions — use one tier consistently.
  */
 
 import { logger } from "./logger";
@@ -16,19 +19,24 @@ import { logger } from "./logger";
 const YOUCAM_API_KEY = process.env.YOUCAM_API_KEY;
 const YOUCAM_BASE = "https://yce-api-01.makeupar.com";
 
-// SD dst_actions we request — covers every metric we display
+// HD dst_actions — all HD tier, no mixing with SD
 const DST_ACTIONS = [
-  "acne",
-  "moisture",
-  "pore",
-  "radiance",
-  "age_spot",
-  "dark_circle_v2",
-  "oiliness",
-  "texture",
-  "wrinkle",
-  "redness",
-  "skin_type",
+  "hd_acne",
+  "hd_droopy_lower_eyelid",
+  "hd_eye_bag",
+  "hd_moisture",
+  "hd_pore",
+  "hd_redness",
+  "hd_texture",
+  "hd_skin_type",
+  "hd_tear_trough",
+  "hd_wrinkle",
+  "hd_age_spot",
+  "hd_radiance",
+  "hd_oiliness",
+  "hd_firmness",
+  "hd_droopy_upper_eyelid",
+  "hd_dark_circle",
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -139,7 +147,7 @@ async function uploadImage(buffer: Buffer, mimeType: string): Promise<string> {
 // ─── Step 3: create AI task ───────────────────────────────────────────────────
 
 async function createTask(fileId: string): Promise<string> {
-  const res = await fetch(`${YOUCAM_BASE}/s2s/v2.0/task/skin-analysis`, {
+  const res = await fetch(`${YOUCAM_BASE}/s2s/v2.1/task/skin-analysis`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -148,7 +156,9 @@ async function createTask(fileId: string): Promise<string> {
     body: JSON.stringify({
       src_file_id: fileId,
       dst_actions: DST_ACTIONS,
+      miniserver_args: { enable_mask_overlay: false },
       format: "json",
+      pf_camera_kit: false,
     }),
   });
 
@@ -198,7 +208,7 @@ async function pollTask(taskId: string, maxWaitMs = 60_000): Promise<YouCamTaskR
   let interval = 1500; // start at 1.5s, back off gently
 
   while (Date.now() - start < maxWaitMs) {
-    const res = await fetch(`${YOUCAM_BASE}/s2s/v2.0/task/skin-analysis/${encodeURIComponent(taskId)}`, {
+    const res = await fetch(`${YOUCAM_BASE}/s2s/v2.1/task/skin-analysis/${encodeURIComponent(taskId)}`, {
       headers: { Authorization: `Bearer ${YOUCAM_API_KEY}` },
     });
 
@@ -233,9 +243,9 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
   const score = (type: string, fallback = 70): number =>
     byType.get(type)?.ui_score ?? fallback;
 
-  // Derive skin type label from oiliness + redness scores
-  const oiliness = score("oiliness", 50);
-  const redness = score("redness", 70);
+  // All keys use the hd_ prefix (HD tier)
+  const oiliness = score("hd_oiliness", 50);
+  const redness = score("hd_redness", 70);
   let skinType = "Normal";
   if (oiliness < 50 && redness < 60) skinType = "Dry & Redness";
   else if (oiliness < 50) skinType = "Dry";
@@ -245,36 +255,35 @@ function parseMetrics(task: YouCamTaskResult): SkinMetrics {
   else if (oiliness >= 55) skinType = "Combination";
 
   // Undertone: derive from redness + age_spot
-  // High redness relative to age_spot → cool/pink. Low redness, high age_spot → warm/golden.
-  const rednessScore = score("redness", 70);
-  const ageSpot = score("age_spot", 70);
+  const rednessScore = score("hd_redness", 70);
+  const ageSpot = score("hd_age_spot", 70);
   let undertone: string | null = "neutral";
   if (rednessScore < 60 && ageSpot > 70) undertone = "warm";
   else if (rednessScore < 55) undertone = "cool";
   else if (ageSpot < 55) undertone = "golden";
 
-  // Overall score = YouCam's all.score if present, otherwise average of key metrics
+  // Overall score = YouCam's all.score if present, otherwise average of key HD metrics
   const allScore = task.results?.all?.score;
   const overallScore = allScore
     ? Math.round(allScore)
     : Math.round(
-        (score("acne") +
-          score("moisture") +
-          score("radiance") +
-          score("pore") +
-          score("texture")) /
+        (score("hd_acne") +
+          score("hd_moisture") +
+          score("hd_radiance") +
+          score("hd_pore") +
+          score("hd_texture")) /
           5,
       );
 
   return {
     overallScore,
-    acneScore: score("acne"),
-    hydrationScore: score("moisture"),
-    pigmentationScore: score("age_spot"),
-    poresScore: score("pore"),
-    wrinklesScore: score("wrinkle", 80),
-    darkcirclesScore: score("dark_circle_v2", 75),
-    radianceScore: score("radiance"),
+    acneScore: score("hd_acne"),
+    hydrationScore: score("hd_moisture"),
+    pigmentationScore: score("hd_age_spot"),
+    poresScore: score("hd_pore"),
+    wrinklesScore: score("hd_wrinkle", 80),
+    darkcirclesScore: score("hd_dark_circle", 75),
+    radianceScore: score("hd_radiance"),
     undertone,
     skinType,
   };
