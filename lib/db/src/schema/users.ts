@@ -13,7 +13,7 @@ export const usersTable = pgTable("users", {
   preferredTelecom: telecomEnum("preferred_telecom"),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").notNull().default("free"),
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
-  scanCredits: integer("scan_credits").notNull().default(1), // 1 free scan on signup
+  scanCredits: integer("scan_credits").notNull().default(3), // 3 free scans on signup
   totalScans: integer("total_scans").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
