@@ -1,0 +1,1 @@
+- [Imported Vite builds](vite-imported-builds.md) — standalone builds need the same PORT and BASE_PATH values that managed workflows inject.

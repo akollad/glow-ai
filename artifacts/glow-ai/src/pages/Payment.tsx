@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useInitiatePayment, useGetPaymentStatus } from "@workspace/api-client-react"
+import { useInitiatePayment, useGetPaymentStatus, getGetPaymentStatusQueryKey } from "@workspace/api-client-react"
 import { BottomNav } from "@/components/layout/BottomNav"
 import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle2, Loader2, Smartphone, CreditCard, ShieldCheck } from "lucide-react"
@@ -20,6 +20,7 @@ export default function PaymentPage() {
   const { data: statusData } = useGetPaymentStatus(refHub as string, {
     query: {
       enabled: !!refHub,
+      queryKey: getGetPaymentStatusQueryKey(refHub as string),
       refetchInterval: (query) => {
         const state = query.state.data?.status
         return state === "SUCCESS" || state === "FAILED" || state === "CANCELLED" || state === "EXPIRED" ? false : 3000

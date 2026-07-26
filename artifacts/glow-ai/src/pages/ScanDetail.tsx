@@ -298,7 +298,7 @@ export default function ScanDetail() {
   }
 
   // ── Complete ──
-  const metrics = scan.skinMetrics as Record<string, number | string | null> | null
+  const metrics = scan.skinMetrics as unknown as Record<string, number | string | null> | null
   const colors = scan.colorRecommendation as {
     recommendedColors?: string[]
     avoidColors?: string[]

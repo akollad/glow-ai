@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter"
-import { useGetScan, useGenerateTiktokClip } from "@workspace/api-client-react"
+import { useGetScan, useGenerateTiktokClip, getGetScanQueryKey } from "@workspace/api-client-react"
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Share2, Loader2, Music, Sparkles } from "lucide-react"
@@ -10,7 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 export default function TikTokShare() {
   const { scanId } = useParams()
   const { data: scan, isLoading: isLoadingScan } = useGetScan(Number(scanId), {
-    query: { enabled: !!scanId }
+    query: {
+      enabled: !!scanId,
+      queryKey: getGetScanQueryKey(Number(scanId)),
+    }
   })
   
   const generateTiktok = useGenerateTiktokClip()
