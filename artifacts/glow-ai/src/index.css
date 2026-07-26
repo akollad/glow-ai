@@ -142,6 +142,9 @@
 .noise-bg {
   position: relative;
 }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 .noise-bg::before {
   content: "";
   position: absolute;

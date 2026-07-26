@@ -1,6 +1,7 @@
+import { useState } from "react"
 import { useParams, Link } from "wouter"
 import { useGetScan } from "@workspace/api-client-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Sparkles, AlertCircle, Camera, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -56,12 +57,7 @@ function scoreLabel(score: number): string {
   return "À améliorer"
 }
 
-function scoreRingGradient(score: number): string {
-  const c = scoreColor(score)
-  return `conic-gradient(${c} ${score * 3.6}deg, rgba(255,255,255,0.1) 0deg)`
-}
-
-// ─── Zone definitions (all 16 metrics) ───────────────────────────────────────
+// ─── Zone definitions ──────────────────────────────────────────────────────────
 
 interface MetricDef {
   key: string
@@ -70,69 +66,178 @@ interface MetricDef {
   maskKey: string
 }
 
-const ZONES: { emoji: string; title: string; metrics: MetricDef[] }[] = [
+const ZONES: { emoji: string; title: string; shortTitle: string; metrics: MetricDef[] }[] = [
   {
     emoji: "✨",
     title: "Teint & Éclat",
+    shortTitle: "Teint",
     metrics: [
-      { key: "radianceScore",    label: "Éclat",        tip: "Vitamine C sérum le matin booste l'éclat naturel", maskKey: "radiance" },
-      { key: "rednessScore",     label: "Rougeurs",      tip: "Centella asiatica + niacinamide pour apaiser", maskKey: "redness" },
-      { key: "pigmentationScore",label: "Taches",        tip: "SPF 50+ quotidien + niacinamide 10% pour uniformiser", maskKey: "age_spot" },
+      { key: "radianceScore",     label: "Éclat",   tip: "Vitamine C sérum le matin booste l'éclat naturel",               maskKey: "radiance" },
+      { key: "rednessScore",      label: "Rougeurs", tip: "Centella asiatica + niacinamide pour apaiser",                    maskKey: "redness" },
+      { key: "pigmentationScore", label: "Taches",   tip: "SPF 50+ quotidien + niacinamide 10% pour uniformiser",           maskKey: "age_spot" },
     ],
   },
   {
     emoji: "💧",
     title: "Hydratation & Sebum",
+    shortTitle: "Hydrat.",
     metrics: [
-      { key: "hydrationScore",   label: "Hydratation",   tip: "Sérum acide hyaluronique + occlusion la nuit", maskKey: "moisture" },
-      { key: "oilinessScore",    label: "Sébum",         tip: "Nettoyant doux 2×/jour, évitez de sur-nettoyer", maskKey: "oiliness" },
-      { key: "firmnessScore",    label: "Fermeté",       tip: "Rétinol nuit + massage facial gua sha", maskKey: "firmness" },
+      { key: "hydrationScore",  label: "Hydratation", tip: "Sérum acide hyaluronique + occlusion la nuit",             maskKey: "moisture" },
+      { key: "oilinessScore",   label: "Sébum",        tip: "Nettoyant doux 2×/jour, évitez de sur-nettoyer",           maskKey: "oiliness" },
+      { key: "firmnessScore",   label: "Fermeté",      tip: "Rétinol nuit + massage facial gua sha",                    maskKey: "firmness" },
     ],
   },
   {
     emoji: "🔬",
     title: "Texture & Pores",
+    shortTitle: "Texture",
     metrics: [
-      { key: "acneScore",        label: "Acné",          tip: "Acide salicylique soir, ne touchez pas les imperfections", maskKey: "acne" },
-      { key: "poresScore",       label: "Pores",         tip: "Argile 1×/semaine + BHA pour affiner les pores", maskKey: "pore" },
-      { key: "wrinklesScore",    label: "Rides",         tip: "Rétinol + peptides + protection solaire quotidienne", maskKey: "wrinkle" },
+      { key: "acneScore",    label: "Acné",  tip: "Acide salicylique soir, ne touchez pas les imperfections",       maskKey: "acne" },
+      { key: "poresScore",   label: "Pores", tip: "Argile 1×/semaine + BHA pour affiner les pores",                maskKey: "pore" },
+      { key: "wrinklesScore",label: "Rides", tip: "Rétinol + peptides + protection solaire quotidienne",           maskKey: "wrinkle" },
     ],
   },
   {
     emoji: "👁",
     title: "Regard",
+    shortTitle: "Regard",
     metrics: [
-      { key: "eyeBagScore",             label: "Poches",         tip: "Drainage lymphatique + compresses froides le matin", maskKey: "eye_bag" },
-      { key: "darkcirclesScore",        label: "Cernes",         tip: "Caféine contour des yeux + sommeil 8h minimum", maskKey: "dark_circle_v2" },
-      { key: "tearTroughScore",         label: "Vallées",        tip: "Hydratation ciblée + repos, évitez le sel", maskKey: "tear_trough" },
-      { key: "droopyLowerEyelidScore",  label: "Paupière basse", tip: "Exercices faciaux + sommeil sur le dos", maskKey: "droopy_lower_eyelid" },
-      { key: "droopyUpperEyelidScore",  label: "Paupière haute", tip: "Massage frontal + sérum liftant", maskKey: "droopy_upper_eyelid" },
+      { key: "eyeBagScore",            label: "Poches",         tip: "Drainage lymphatique + compresses froides le matin",  maskKey: "eye_bag" },
+      { key: "darkcirclesScore",       label: "Cernes",         tip: "Caféine contour des yeux + sommeil 8h minimum",       maskKey: "dark_circle_v2" },
+      { key: "tearTroughScore",        label: "Vallées",        tip: "Hydratation ciblée + repos, évitez le sel",           maskKey: "tear_trough" },
+      { key: "droopyLowerEyelidScore", label: "Paupière basse", tip: "Exercices faciaux + sommeil sur le dos",              maskKey: "droopy_lower_eyelid" },
+      { key: "droopyUpperEyelidScore", label: "Paupière haute", tip: "Massage frontal + sérum liftant",                     maskKey: "droopy_upper_eyelid" },
     ],
   },
 ]
+
+// ─── Metric card with image + mask overlay ─────────────────────────────────────
+
+function MetricCard({
+  label,
+  tip,
+  score,
+  maskUrl,
+  selfieUrl,
+  expanded,
+  onToggle,
+}: {
+  label: string
+  tip: string
+  score: number
+  maskUrl?: string
+  selfieUrl?: string
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const color = scoreColor(score)
+  const bgImage = maskUrl ?? selfieUrl
+  const circumference = 113.1 // 2π × 18
+
+  if (bgImage) {
+    return (
+      <motion.div
+        layout
+        onClick={onToggle}
+        className="relative rounded-2xl overflow-hidden cursor-pointer"
+        style={{ height: expanded ? "auto" : "10rem", minHeight: "10rem" }}
+      >
+        {/* Photo background (mask or selfie) */}
+        <img
+          src={bgImage}
+          alt={label}
+          className="absolute inset-0 w-full h-full object-cover object-top"
+          loading="lazy"
+        />
+        {/* Score colour tint — simulates mask overlay when using selfie fallback */}
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: color + "44", mixBlendMode: "multiply" }}
+        />
+        {/* Gradient for text legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+
+        {/* Score ring — top-right */}
+        <div className="absolute top-3 right-3">
+          <div className="relative w-12 h-12">
+            <svg className="absolute inset-0 -rotate-90" width="48" height="48" viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="18" fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+              <circle
+                cx="24" cy="24" r="18" fill="none"
+                stroke={color} strokeWidth="4" strokeLinecap="round"
+                strokeDasharray={`${(score / 100) * circumference} ${circumference}`}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-white font-bold text-xs">{score}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Label + tip — bottom */}
+        <div className="absolute bottom-0 inset-x-0 p-3">
+          <p className="text-white font-medium text-sm leading-tight">{label}</p>
+          <AnimatePresence>
+            {expanded && (
+              <motion.p
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-white/70 text-[11px] mt-1 leading-snug overflow-hidden"
+              >
+                {tip}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // ── Fallback: no image ──
+  return (
+    <div
+      onClick={onToggle}
+      className="bg-card rounded-2xl border border-border/50 p-4 cursor-pointer"
+    >
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-medium text-sm">{label}</span>
+        <span className="font-bold text-sm" style={{ color }}>{score}/100</span>
+      </div>
+      <Progress value={score} className="h-1.5" />
+      {expanded && (
+        <p className="text-[11px] text-muted-foreground mt-2 leading-snug">{tip}</p>
+      )}
+    </div>
+  )
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ScanDetail() {
   const { scanId } = useParams()
+  const [activeZone, setActiveZone] = useState(0)
+  const [expandedMetric, setExpandedMetric] = useState<string | null>(null)
+
   const { data: scan, isLoading } = useGetScan(Number(scanId), {
     query: {
       enabled: !!scanId,
       queryKey: ["getScan", Number(scanId)],
-      refetchInterval: (query) => {
+      refetchInterval: (query: { state: { data?: unknown } }) => {
         const status = (query.state.data as { status?: string } | undefined)?.status
         return status === "processing" ? 2000 : false
       },
     },
   })
 
+  // ── Loading ──
   if (isLoading) {
     return (
       <div className="min-h-[100dvh] w-full flex flex-col items-center bg-background p-6 gap-4">
         <Skeleton className="w-full h-56 rounded-3xl mt-12" />
-        <Skeleton className="w-full h-24 rounded-3xl" />
-        <Skeleton className="w-full h-40 rounded-3xl" />
-        <Skeleton className="w-full h-40 rounded-3xl" />
+        <Skeleton className="w-full h-10 rounded-full" />
+        <Skeleton className="w-full h-40 rounded-2xl" />
+        <Skeleton className="w-full h-40 rounded-2xl" />
       </div>
     )
   }
@@ -141,6 +246,7 @@ export default function ScanDetail() {
     return <div className="p-6 text-center mt-20 text-muted-foreground">Scan non trouvé</div>
   }
 
+  // ── Processing ──
   if (scan.status === "processing") {
     return (
       <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-background px-6 gap-6">
@@ -160,6 +266,7 @@ export default function ScanDetail() {
     )
   }
 
+  // ── Failed ──
   if (scan.status === "failed") {
     const message = getErrorMessage(scan.rawYoucamData as Record<string, unknown> | null)
     return (
@@ -199,18 +306,20 @@ export default function ScanDetail() {
     necklineAdvice?: string | null
   } | null
   const masks = (scan.maskUrls ?? {}) as Record<string, string>
+  const selfieUrl = scan.selfieUrl ?? undefined
 
-  // Resolve mask URL: hd_ prefix first, then bare name, then _v2 variants
   const mask = (base: string): string | undefined =>
     masks[`hd_${base}`] ?? masks[base] ?? masks[`hd_${base}_v2`] ?? masks[`${base}_v2`]
 
   const overall = (metrics?.overallScore as number) ?? 0
+  const activeZoneData = ZONES[activeZone]!
+  const overallCircumference = 2 * Math.PI * 50 // r=50
 
   return (
-    <div className="min-h-[100dvh] w-full flex justify-center bg-background noise-bg pb-28">
-      <div className="w-full max-w-md flex flex-col">
+    <div className="min-h-[100dvh] w-full flex justify-center bg-background">
+      <div className="w-full max-w-md flex flex-col pb-28">
 
-        {/* Sticky header */}
+        {/* ── Sticky header ── */}
         <div className="flex items-center justify-between px-5 py-4 sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border/30">
           <Button variant="ghost" size="icon" asChild className="rounded-full bg-card shadow-sm border border-border/50">
             <Link href="/dashboard"><ArrowLeft size={20} /></Link>
@@ -219,134 +328,160 @@ export default function ScanDetail() {
           <div className="w-10" />
         </div>
 
-        <div className="px-5 pt-6 space-y-8">
+        <div className="px-5 pt-5 space-y-5">
 
-          {/* ── Score Global Hero ── */}
+          {/* ── Hero card: score + selfie ── */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-[2.5rem] overflow-hidden bg-foreground text-background p-8"
+            className="bg-card rounded-3xl border border-border/50 p-5 relative overflow-hidden"
           >
-            {/* Background glow blobs */}
-            <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-20"
-                 style={{ background: scoreColor(overall) }} />
-            <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full blur-3xl opacity-10"
-                 style={{ background: scoreColor(overall) }} />
+            {/* Ambient glow */}
+            <div
+              className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-15 pointer-events-none"
+              style={{ background: scoreColor(overall) }}
+            />
 
-            <div className="relative z-10 flex items-center gap-6">
-              {/* Circular score ring */}
-              <div className="relative shrink-0 w-28 h-28 flex items-center justify-center">
-                <svg className="absolute inset-0 -rotate-90" width="112" height="112" viewBox="0 0 112 112">
-                  <circle cx="56" cy="56" r="50" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-                  <circle
+            <div className="flex items-center gap-4 relative z-10">
+              {/* Score ring */}
+              <div className="relative shrink-0 w-20 h-20 flex items-center justify-center">
+                <svg className="absolute inset-0 -rotate-90" width="80" height="80" viewBox="0 0 112 112">
+                  <circle cx="56" cy="56" r="50" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
+                  <motion.circle
                     cx="56" cy="56" r="50" fill="none"
-                    stroke={scoreColor(overall)} strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${(overall / 100) * 314} 314`}
+                    stroke={scoreColor(overall)} strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={overallCircumference}
+                    initial={{ strokeDashoffset: overallCircumference }}
+                    animate={{ strokeDashoffset: overallCircumference * (1 - overall / 100) }}
+                    transition={{ duration: 1.2, ease: "easeOut" }}
                   />
                 </svg>
                 <div className="text-center z-10">
-                  <p className="font-serif text-4xl leading-none text-background">{overall}</p>
-                  <p className="text-[10px] text-background/50 mt-1">/100</p>
+                  <p className="font-serif text-2xl leading-none">{overall}</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">/100</p>
                 </div>
               </div>
 
-              {/* Labels */}
-              <div className="flex-1">
-                <p className="text-background/60 text-xs font-medium mb-1 uppercase tracking-wide">Score Global</p>
-                <p className="font-serif text-2xl text-background mb-3" style={{ color: scoreColor(overall) }}>
+              {/* Labels + chips */}
+              <div className="flex-1 min-w-0">
+                <p className="text-muted-foreground text-[11px] uppercase tracking-wide mb-0.5">Glow Score</p>
+                <p className="font-serif text-xl mb-2" style={{ color: scoreColor(overall) }}>
                   {scoreLabel(overall)}
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {metrics?.skinType && (
-                    <span className="px-2 py-0.5 rounded-full bg-white/10 text-background/80 text-xs">
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[11px]">
                       {metrics.skinType as string}
                     </span>
                   )}
                   {metrics?.undertone && (
-                    <span className="px-2 py-0.5 rounded-full bg-white/10 text-background/80 text-xs capitalize">
-                      Sous-ton {metrics.undertone as string}
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[11px] capitalize">
+                      {metrics.undertone as string}
                     </span>
                   )}
                   {metrics?.skinAge != null && (
-                    <span className="px-2 py-0.5 rounded-full bg-white/10 text-background/80 text-xs">
-                      Âge cutané : {metrics.skinAge as number} ans
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[11px]">
+                      {metrics.skinAge as number} ans
                     </span>
                   )}
                 </div>
               </div>
+
+              {/* Circular selfie */}
+              {selfieUrl && (
+                <div className="shrink-0 w-16 h-16 rounded-full overflow-hidden border-2 border-border/60 shadow-md">
+                  <img src={selfieUrl} alt="Selfie" className="w-full h-full object-cover object-top" />
+                </div>
+              )}
             </div>
+
+            {/* AI advice */}
+            {scan.aiAdvice && (
+              <div className="mt-4 pt-4 border-t border-border/30 relative z-10">
+                <p className="text-sm text-muted-foreground italic line-clamp-2 leading-relaxed">
+                  "{scan.aiAdvice}"
+                </p>
+              </div>
+            )}
           </motion.div>
 
-          {/* ── AI Conseil ── */}
-          {scan.aiAdvice && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="bg-primary/8 border border-primary/20 rounded-3xl p-5"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center">
-                  <Sparkles className="text-primary" size={16} />
-                </div>
-                <h3 className="font-serif text-base">Diagnostic IA</h3>
-              </div>
-              <p className="text-sm leading-relaxed text-foreground/80">{scan.aiAdvice}</p>
-            </motion.div>
-          )}
-
-          {/* ── 4 Diagnostic Zones ── */}
-          {ZONES.map((zone, zi) => (
-            <motion.section
-              key={zone.title}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + zi * 0.07 }}
-            >
-              <h3 className="font-serif text-xl mb-4 flex items-center gap-2">
-                <span className="text-2xl">{zone.emoji}</span>
-                {zone.title}
-              </h3>
-              <div className="space-y-3">
-                {zone.metrics.map((m) => {
-                  const score = (metrics?.[m.key] as number) ?? 0
-                  const maskUrl = mask(m.maskKey)
-                  return (
-                    <MetricCard
-                      key={m.key}
-                      label={m.label}
-                      tip={m.tip}
-                      score={score}
-                      maskUrl={maskUrl}
+          {/* ── Zone tabs ── */}
+          <div className="sticky top-[61px] bg-background/90 backdrop-blur-md z-10 -mx-5 px-5 py-3 border-b border-border/20">
+            <div className="flex gap-1 overflow-x-auto no-scrollbar">
+              {ZONES.map((zone, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setActiveZone(i); setExpandedMetric(null) }}
+                  className={`relative px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-medium transition-colors flex-shrink-0 ${
+                    i === activeZone
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span className="mr-1">{zone.emoji}</span>
+                  {zone.shortTitle}
+                  {i === activeZone && (
+                    <motion.div
+                      layoutId="zoneUnderline"
+                      className="absolute left-2 right-2 bottom-0 h-[2px] rounded-full"
+                      style={{ backgroundColor: "hsl(var(--primary))" }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
-                  )
-                })}
-              </div>
-            </motion.section>
-          ))}
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Metric grid ── */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeZone}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="grid grid-cols-2 gap-3"
+            >
+              {activeZoneData.metrics.map((m) => {
+                const score = (metrics?.[m.key] as number) ?? 0
+                return (
+                  <MetricCard
+                    key={m.key}
+                    label={m.label}
+                    tip={m.tip}
+                    score={score}
+                    maskUrl={mask(m.maskKey)}
+                    selfieUrl={selfieUrl}
+                    expanded={expandedMetric === m.key}
+                    onToggle={() => setExpandedMetric(expandedMetric === m.key ? null : m.key)}
+                  />
+                )
+              })}
+            </motion.div>
+          </AnimatePresence>
 
           {/* ── Colorimétrie ── */}
-          {colors && colors.recommendedColors && colors.recommendedColors.length > 0 && (
+          {colors?.recommendedColors && colors.recommendedColors.length > 0 && (
             <motion.section
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.2 }}
+              className="pt-2"
             >
-              <h3 className="font-serif text-xl mb-4 flex items-center gap-2">
-                <span className="text-2xl">🎨</span>
-                Votre Colorimétrie
-              </h3>
+              <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mb-5" />
+              <h3 className="font-serif text-xl mb-4 text-center">Votre colorimétrie</h3>
 
               <div className="bg-card rounded-3xl border border-border/50 overflow-hidden">
-                {/* Color swatches */}
                 <div className="p-5">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Couleurs qui subliment</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
+                    Couleurs qui subliment
+                  </p>
                   <div className="flex gap-3 flex-wrap">
                     {colors.recommendedColors.map((color, i) => (
                       <div key={i} className="flex flex-col items-center gap-1.5">
                         <div
-                          className="w-12 h-12 rounded-2xl shadow-md border border-border/20"
+                          className="w-12 h-16 rounded-full shadow-md border border-border/20"
                           style={{ backgroundColor: color }}
                         />
                         <span className="text-[10px] text-muted-foreground font-mono">{color}</span>
@@ -355,7 +490,6 @@ export default function ScanDetail() {
                   </div>
                 </div>
 
-                {/* Style advice */}
                 {colors.styleAdvice && (
                   <div className="border-t border-border/40 px-5 py-4">
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1.5">Conseil style</p>
@@ -363,7 +497,6 @@ export default function ScanDetail() {
                   </div>
                 )}
 
-                {/* TikTok CTA */}
                 <div className="px-5 pb-5 pt-2">
                   <Button asChild className="w-full rounded-full h-12 group" variant="default">
                     <Link href={`/tiktok/${scan.id}`}>
@@ -377,84 +510,6 @@ export default function ScanDetail() {
           )}
 
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── MetricCard — mask as full-bleed hero ──────────────────────────────────────
-
-function MetricCard({
-  label,
-  tip,
-  score,
-  maskUrl,
-}: {
-  label: string
-  tip: string
-  score: number
-  maskUrl?: string
-}) {
-  const color = scoreColor(score)
-
-  if (maskUrl) {
-    return (
-      <div className="relative rounded-2xl overflow-hidden h-40 group">
-        {/* Mask image — full bleed */}
-        <img
-          src={maskUrl}
-          alt={`Masque ${label}`}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
-          onError={(e) => {
-            // Fallback: hide image, show plain card
-            const el = e.currentTarget.closest(".group") as HTMLElement | null
-            if (el) el.classList.add("mask-error")
-            ;(e.currentTarget as HTMLImageElement).style.display = "none"
-          }}
-        />
-        {/* Left gradient for text legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
-        {/* Bottom gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-        {/* Content overlay */}
-        <div className="absolute inset-0 flex items-center justify-between p-4">
-          <div className="flex-1 pr-4">
-            <p className="font-serif text-lg text-white leading-tight">{label}</p>
-            <p className="text-[11px] text-white/65 mt-1 leading-snug line-clamp-2">{tip}</p>
-          </div>
-          {/* Score badge */}
-          <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
-            <svg className="absolute inset-0 -rotate-90" width="64" height="64" viewBox="0 0 64 64">
-              <circle cx="32" cy="32" r="27" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.12)" strokeWidth="6" />
-              <circle
-                cx="32" cy="32" r="27" fill="none"
-                stroke={color} strokeWidth="6"
-                strokeLinecap="round"
-                strokeDasharray={`${(score / 100) * 169.6} 169.6`}
-              />
-            </svg>
-            <div className="z-10 text-center">
-              <p className="font-bold text-white text-lg leading-none">{score}</p>
-              <p className="text-white/50 text-[8px]">/100</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Fallback: no mask available ──
-  return (
-    <div className="bg-card rounded-2xl border border-border/50 p-4 flex items-center gap-4">
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-medium text-sm">{label}</span>
-          <span className="font-bold text-sm" style={{ color }}>{score}/100</span>
-        </div>
-        <Progress value={score} className="h-1.5" />
-        <p className="text-[11px] text-muted-foreground mt-2 leading-snug">{tip}</p>
       </div>
     </div>
   )
