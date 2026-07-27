@@ -11,6 +11,12 @@ export const usersTable = pgTable("users", {
   displayName: text("display_name"),
   phone: text("phone"),
   preferredTelecom: telecomEnum("preferred_telecom"),
+  country: text("country"),
+  currency: text("currency").notNull().default("USD"),
+  budgetLevel: text("budget_level").notNull().default("medium"),
+  climate: text("climate").notNull().default("humid"),
+  skinGoals: text("skin_goals"),
+  allergies: text("allergies"),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").notNull().default("free"),
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
   scanCredits: integer("scan_credits").notNull().default(3), // 3 free scans on signup
